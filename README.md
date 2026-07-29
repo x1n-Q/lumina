@@ -18,7 +18,18 @@ and streams seekable audio through a private local proxy.
 - Accent themes, OLED mode, speed controls, and equalizer settings
 - Offline fallback to iTunes preview metadata
 
-## Requirements
+## Install a release
+
+Download the appropriate artifact from
+[GitHub Releases](https://github.com/x1n-Q/lumina/releases):
+
+- Linux: `.deb` package or portable `.AppImage`
+- Windows: portable `.exe`
+
+Release builds include a checksum-verified `yt-dlp` runtime. Users do not need
+to install Node.js, npm, or `yt-dlp`.
+
+## Development requirements
 
 - Node.js and npm
 - `yt-dlp` available in `PATH`
@@ -61,6 +72,19 @@ Then start Electron in another terminal:
 ```bash
 npm run electron
 ```
+
+## Build desktop packages
+
+```bash
+# Linux .deb and AppImage
+npm run dist:linux
+
+# Windows portable .exe
+npm run dist:win
+```
+
+The runtime preparation script pins `yt-dlp` to version `2026.07.04` and
+verifies the official SHA-256 checksum before packaging it.
 
 ## Playback troubleshooting
 

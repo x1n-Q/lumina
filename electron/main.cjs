@@ -31,6 +31,13 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   try {
+    if (app.isPackaged) {
+      process.env.LUMINA_YTDLP_PATH = path.join(
+        process.resourcesPath,
+        'bin',
+        process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
+      );
+    }
     await startAudioServer(undefined, undefined, {
       cacheDirectory: path.join(app.getPath('userData'), 'audio-cache')
     });

@@ -251,7 +251,8 @@ async function createDownloadedTrack(videoId, metadata = {}) {
 
 function runYtDlp(args, timeout = 30000) {
   return new Promise((resolve, reject) => {
-    const child = spawn('yt-dlp', args, {
+    const executable = process.env.LUMINA_YTDLP_PATH || 'yt-dlp';
+    const child = spawn(executable, args, {
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
@@ -286,7 +287,7 @@ function runYtDlp(args, timeout = 30000) {
     child.stderr.on('data', (chunk) => stderr.push(chunk));
     child.on('error', (error) => {
       if (error.code === 'ENOENT') {
-        finish(new Error('yt-dlp is not installed or is not available in PATH'));
+        finish(new Error(`yt-dlp is not available at ${executable}`));
       } else {
         finish(error);
       }
