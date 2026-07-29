@@ -30,7 +30,9 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   try {
-    await startAudioServer();
+    await startAudioServer(undefined, undefined, {
+      cacheDirectory: path.join(app.getPath('userData'), 'audio-cache')
+    });
     createWindow();
   } catch (error) {
     dialog.showErrorBox(

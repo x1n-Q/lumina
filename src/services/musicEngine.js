@@ -20,6 +20,61 @@ export async function getEngineHealth() {
   return response.json();
 }
 
+export async function getDownloadedTracks() {
+  const response = await fetch(`${BACKEND_URL}/api/downloads`);
+  if (!response.ok) {
+    throw new Error(`Could not load downloads (${response.status})`);
+  }
+  const tracks = await response.json();
+  return Array.isArray(tracks) ? tracks : [];
+}
+
+function getTrackVideoId(track) {
+  if (track?.videoId) return track.videoId;
+  if (typeof track?.id === 'string' && track.id.startsWith('yt-')) {
+    return track.id.slice(3);
+  }
+  return '';
+}
+
+export async function downloadTrack(track) {
+  const videoId = getTrackVideoId(track);
+  if (!videoId) {
+    throw new Error('Only full YouTube tracks can be downloaded');
+  }
+
+  const response = await fetch(`${BACKEND_URL}/api/downloads/${encodeURIComponent(videoId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      duration: track.duration,
+      cover: track.cover,
+      genre: track.genre
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || `Download failed (${response.status})`);
+  }
+  return result;
+}
+
+export async function removeDownloadedTrack(track) {
+  const videoId = getTrackVideoId(track);
+  if (!videoId) throw new Error('Downloaded track ID is missing');
+
+  const response = await fetch(`${BACKEND_URL}/api/downloads/${encodeURIComponent(videoId)}`, {
+    method: 'DELETE'
+  });
+  if (!response.ok && response.status !== 404) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.error || `Could not remove download (${response.status})`);
+  }
+}
+
 export async function searchLiveMusic(query = 'spice and wolf ost', limit = 12) {
   try {
     const url = `${BACKEND_URL}/api/search?q=${encodeURIComponent(query)}&limit=${limit}`;

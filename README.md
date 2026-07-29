@@ -28,6 +28,20 @@ npm start
 Electron starts the local audio engine automatically on `127.0.0.1:5174`.
 You do not need to run `server.cjs` separately.
 
+## Downloads and local cache
+
+Use the download button on any full YouTube result to save its audio locally.
+Downloaded tracks appear in the **Downloads** section and Lumina automatically
+plays the cached file instead of requesting the remote stream.
+
+Electron stores downloaded audio in its Lumina user-data directory:
+
+- Linux: `~/.config/Lumina/audio-cache`
+- Windows: `%APPDATA%/Lumina/audio-cache`
+- macOS: `~/Library/Application Support/Lumina/audio-cache`
+
+Removing a track from Downloads also removes its cached audio file.
+
 ## Development
 
 Start Vite:
