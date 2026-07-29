@@ -1,0 +1,513 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+import HomeView from './components/HomeView';
+import SettingsView from './components/SettingsView';
+import MusicPlayer from './components/MusicPlayer';
+import EqualizerModal from './components/EqualizerModal';
+import LyricsModal from './components/LyricsModal';
+
+import { SAMPLE_TRACKS } from './data/sampleTracks';
+import { fetchLyricsFromLRCLIB, parseLrc } from './services/lrclib';
+import { getEngineHealth, MUSIC_GENRES, searchLiveMusic } from './services/musicEngine';
+import { usePersistentState } from './hooks/usePersistentState';
+
+const DEFAULT_GENRE_ID = MUSIC_GENRES[0]?.id || '';
+const MAX_RECENT_TRACKS = 24;
+const INITIAL_ENGINE_HEALTH = {
+  ok: false,
+  status: 'checking',
+  uptimeSeconds: 0,
+  ytDlpVersion: null,
+  cacheEntries: 0,
+  searches: 0,
+  streamRequests: 0,
+  activeStreams: 0
+};
+
+function normalizeTrackCollection(value) {
+  return Array.isArray(value) ? value.filter((track) => track?.id && track?.streamUrl) : [];
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('home');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [accent, setAccent] = usePersistentState(
+    'lumina:accent',
+    'indigo',
+    ['metrolist:accent']
+  );
+  const [oledMode, setOledMode] = usePersistentState(
+    'lumina:oled',
+    false,
+    ['metrolist:oled']
+  );
+  const [activeGenre, setActiveGenre] = usePersistentState(
+    'lumina:active-genre',
+    DEFAULT_GENRE_ID,
+    ['metrolist:active-genre']
+  );
+
+  const [tracks, setTracks] = useState(SAMPLE_TRACKS);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchMeta, setSearchMeta] = useState({
+    source: 'Local starter mix',
+    degraded: false,
+    message: ''
+  });
+  const [engineHealth, setEngineHealth] = useState(INITIAL_ENGINE_HEALTH);
+  const [likedTracks, setLikedTracks] = usePersistentState(
+    'lumina:favorites',
+    [],
+    ['metrolist:favorites']
+  );
+  const [recentTracks, setRecentTracks] = usePersistentState(
+    'lumina:history',
+    [],
+    ['metrolist:history']
+  );
+
+  const [playingTrack, setPlayingTrack] = useState(null);
+  const [playingQueue, setPlayingQueue] = useState([]);
+  const [, setPlayingQueueIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = usePersistentState(
+    'lumina:volume',
+    0.8,
+    ['metrolist:volume']
+  );
+  const [speed, setSpeed] = usePersistentState(
+    'lumina:speed',
+    1,
+    ['metrolist:speed']
+  );
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [playbackError, setPlaybackError] = useState('');
+
+  const [isEqOpen, setIsEqOpen] = useState(false);
+  const [eqBands, setEqBands] = usePersistentState(
+    'lumina:eq-bands',
+    [0, 0, 0, 0, 0],
+    ['metrolist:eq-bands']
+  );
+  const [eqPreset, setEqPreset] = usePersistentState(
+    'lumina:eq-preset',
+    'Flat',
+    ['metrolist:eq-preset']
+  );
+  const [audioNormalize, setAudioNormalize] = usePersistentState(
+    'lumina:normalize',
+    true,
+    ['metrolist:normalize']
+  );
+  const [silenceSkip, setSilenceSkip] = usePersistentState(
+    'lumina:silence-skip',
+    false,
+    ['metrolist:silence-skip']
+  );
+
+  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
+  const [lyricsData, setLyricsData] = useState([]);
+  const [sleepTimer, setSleepTimer] = useState(null);
+
+  const audioRef = useRef(null);
+  if (!audioRef.current) {
+    audioRef.current = new Audio();
+  }
+
+  const favorites = useMemo(() => normalizeTrackCollection(likedTracks), [likedTracks]);
+  const history = useMemo(() => normalizeTrackCollection(recentTracks), [recentTracks]);
+  const likedSongIds = useMemo(() => favorites.map((track) => track.id), [favorites]);
+
+  const visibleTracks = useMemo(() => {
+    if (activeTab === 'favorites') return favorites;
+    if (activeTab === 'library') return history;
+    return tracks;
+  }, [activeTab, favorites, history, tracks]);
+
+  const viewMode = activeTab === 'favorites'
+    ? 'favorites'
+    : activeTab === 'library'
+      ? 'library'
+      : activeTab === 'explore'
+        ? 'explore'
+        : 'home';
+
+  const refreshEngineHealth = useCallback(async () => {
+    try {
+      const health = await getEngineHealth();
+      setEngineHealth({ ...INITIAL_ENGINE_HEALTH, ...health });
+    } catch {
+      setEngineHealth((current) => ({
+        ...current,
+        ok: false,
+        status: 'offline',
+        activeStreams: 0
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshEngineHealth();
+    const interval = window.setInterval(refreshEngineHealth, 15000);
+    window.addEventListener('online', refreshEngineHealth);
+    window.addEventListener('focus', refreshEngineHealth);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('online', refreshEngineHealth);
+      window.removeEventListener('focus', refreshEngineHealth);
+    };
+  }, [refreshEngineHealth]);
+
+  const loadMusicCategory = useCallback(async (query) => {
+    setIsLoading(true);
+    try {
+      const result = await searchLiveMusic(query);
+      setTracks(result.tracks);
+      setSearchMeta({
+        source: result.source,
+        degraded: result.degraded,
+        message: result.message
+      });
+    } finally {
+      setIsLoading(false);
+      refreshEngineHealth();
+    }
+  }, [refreshEngineHealth]);
+
+  useEffect(() => {
+    const genre = MUSIC_GENRES.find((item) => item.id === activeGenre) || MUSIC_GENRES[0];
+    const typedQuery = searchQuery.trim();
+    const query = typedQuery || genre?.query || 'music';
+    const timer = window.setTimeout(
+      () => loadMusicCategory(query),
+      typedQuery ? 400 : 0
+    );
+    return () => window.clearTimeout(timer);
+  }, [activeGenre, loadMusicCategory, searchQuery]);
+
+  const handleSearchQueryChange = (value) => {
+    setSearchQuery(value);
+    if (value.trim() && !['home', 'explore'].includes(activeTab)) {
+      setActiveTab('home');
+    }
+  };
+
+  const handleSelectGenre = (genre) => {
+    setActiveGenre(genre.id);
+    setSearchQuery('');
+  };
+
+  const handleToggleLike = (track) => {
+    setLikedTracks((currentValue) => {
+      const current = normalizeTrackCollection(currentValue);
+      return current.some((item) => item.id === track.id)
+        ? current.filter((item) => item.id !== track.id)
+        : [track, ...current];
+    });
+  };
+
+  const recordRecentTrack = useCallback((track) => {
+    setRecentTracks((currentValue) => {
+      const current = normalizeTrackCollection(currentValue);
+      return [
+        track,
+        ...current.filter((item) => item.id !== track.id)
+      ].slice(0, MAX_RECENT_TRACKS);
+    });
+  }, [setRecentTracks]);
+
+  const handleSelectTrack = (track) => {
+    const queue = visibleTracks.length > 0 ? visibleTracks : tracks;
+    const index = queue.findIndex((item) => item.id === track.id);
+    setPlayingQueue([...queue]);
+    setPlayingQueueIndex(index !== -1 ? index : 0);
+    setPlaybackError('');
+    setCurrentTime(0);
+    setDuration(track.duration || 0);
+    recordRecentTrack(track);
+
+    if (playingTrack?.id === track.id) {
+      audioRef.current.currentTime = 0;
+    } else {
+      setPlayingTrack(track);
+    }
+    setIsPlaying(true);
+  };
+
+  const handleNextTrack = useCallback(() => {
+    const queue = playingQueue.length > 0 ? playingQueue : tracks;
+    if (queue.length === 0) return;
+
+    setPlayingQueueIndex((currentIndex) => {
+      const nextIndex = (currentIndex + 1) % queue.length;
+      const nextTrack = queue[nextIndex];
+      setPlayingTrack(nextTrack);
+      setCurrentTime(0);
+      setDuration(nextTrack.duration || 0);
+      setPlaybackError('');
+      setIsPlaying(true);
+      recordRecentTrack(nextTrack);
+      return nextIndex;
+    });
+  }, [playingQueue, recordRecentTrack, tracks]);
+
+  const handlePrevTrack = () => {
+    const queue = playingQueue.length > 0 ? playingQueue : tracks;
+    if (queue.length === 0) return;
+
+    setPlayingQueueIndex((currentIndex) => {
+      const previousIndex = (currentIndex - 1 + queue.length) % queue.length;
+      const previousTrack = queue[previousIndex];
+      setPlayingTrack(previousTrack);
+      setCurrentTime(0);
+      setDuration(previousTrack.duration || 0);
+      setPlaybackError('');
+      setIsPlaying(true);
+      recordRecentTrack(previousTrack);
+      return previousIndex;
+    });
+  };
+
+  const handleTogglePlay = () => {
+    setPlaybackError('');
+    setIsPlaying((currentlyPlaying) => !currentlyPlaying);
+  };
+
+  const handleSeek = (time) => {
+    if (!Number.isFinite(time)) return;
+    audioRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!playingTrack?.streamUrl) return;
+
+    audio.pause();
+    audio.src = playingTrack.streamUrl;
+    audio.load();
+    setCurrentTime(0);
+    setDuration(playingTrack.duration || 0);
+    setPlaybackError('');
+    setIsBuffering(true);
+  }, [playingTrack]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!playingTrack?.streamUrl) return;
+
+    if (!isPlaying) {
+      audio.pause();
+      return;
+    }
+
+    let cancelled = false;
+    audio.play().catch((error) => {
+      if (cancelled) return;
+      console.error('Audio playback failed:', error);
+      setPlaybackError('Unable to play this track. Check the audio engine or try another song.');
+      setIsBuffering(false);
+      setIsPlaying(false);
+      refreshEngineHealth();
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isPlaying, playingTrack, refreshEngineHealth]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onDurationChange = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration);
+      }
+    };
+    const onCanPlay = () => {
+      setIsBuffering(false);
+      refreshEngineHealth();
+    };
+    const onWaiting = () => setIsBuffering(true);
+    const onError = () => {
+      setIsBuffering(false);
+      setIsPlaying(false);
+      setPlaybackError('The audio stream could not be loaded. Try the track again.');
+      refreshEngineHealth();
+    };
+
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('loadedmetadata', onDurationChange);
+    audio.addEventListener('durationchange', onDurationChange);
+    audio.addEventListener('canplay', onCanPlay);
+    audio.addEventListener('playing', onCanPlay);
+    audio.addEventListener('waiting', onWaiting);
+    audio.addEventListener('stalled', onWaiting);
+    audio.addEventListener('error', onError);
+    audio.addEventListener('ended', handleNextTrack);
+
+    return () => {
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('loadedmetadata', onDurationChange);
+      audio.removeEventListener('durationchange', onDurationChange);
+      audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener('playing', onCanPlay);
+      audio.removeEventListener('waiting', onWaiting);
+      audio.removeEventListener('stalled', onWaiting);
+      audio.removeEventListener('error', onError);
+      audio.removeEventListener('ended', handleNextTrack);
+    };
+  }, [handleNextTrack, refreshEngineHealth]);
+
+  useEffect(() => {
+    const nextVolume = Number(volume);
+    audioRef.current.volume = Number.isFinite(nextVolume)
+      ? Math.min(Math.max(nextVolume, 0), 1)
+      : 0.8;
+  }, [volume]);
+
+  useEffect(() => {
+    const nextSpeed = Number(speed);
+    audioRef.current.playbackRate = Number.isFinite(nextSpeed) ? nextSpeed : 1;
+  }, [speed]);
+
+  useEffect(() => {
+    if (!playingTrack) return;
+
+    let cancelled = false;
+    if (playingTrack.lyrics) {
+      setLyricsData(parseLrc(playingTrack.lyrics));
+    } else {
+      setLyricsData([]);
+      fetchLyricsFromLRCLIB(playingTrack.title, playingTrack.artist).then((result) => {
+        if (!cancelled && result?.synced) {
+          setLyricsData(result.synced);
+        }
+      });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [playingTrack]);
+
+  useEffect(() => {
+    if (!sleepTimer) return;
+    const timeout = window.setTimeout(() => {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      setSleepTimer(null);
+      window.alert('Sleep timer completed. Playback paused.');
+    }, sleepTimer * 60 * 1000);
+
+    return () => window.clearTimeout(timeout);
+  }, [sleepTimer]);
+
+  useEffect(() => () => {
+    const audio = audioRef.current;
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+  }, []);
+
+  return (
+    <div className="app-container" data-accent={accent} data-theme={oledMode ? 'oled' : 'dark'}>
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenEqualizer={() => setIsEqOpen(true)}
+        engineHealth={engineHealth}
+        favoriteCount={favorites.length}
+        historyCount={history.length}
+      />
+
+      <div className="main-wrapper">
+        <Header
+          searchQuery={searchQuery}
+          setSearchQuery={handleSearchQueryChange}
+          accent={accent}
+          setAccent={setAccent}
+          activeTab={activeTab}
+          engineHealth={engineHealth}
+        />
+
+        <main className="content-area">
+          {activeTab !== 'settings' && (
+            <HomeView
+              tracks={visibleTracks}
+              currentTrack={playingTrack}
+              isPlaying={isPlaying}
+              onSelectTrack={handleSelectTrack}
+              searchQuery={searchQuery}
+              activeGenre={activeGenre}
+              onSelectGenre={handleSelectGenre}
+              isLoading={isLoading && ['home', 'explore'].includes(activeTab)}
+              likedSongs={likedSongIds}
+              onToggleLike={handleToggleLike}
+              viewMode={viewMode}
+              engineHealth={engineHealth}
+              savedCount={favorites.length}
+              recentCount={history.length}
+              dataSource={searchMeta.source}
+              notice={searchMeta.message}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsView
+              oledMode={oledMode}
+              setOledMode={setOledMode}
+              engineHealth={engineHealth}
+            />
+          )}
+        </main>
+      </div>
+
+      <MusicPlayer
+        currentTrack={playingTrack}
+        isPlaying={isPlaying}
+        onTogglePlay={handleTogglePlay}
+        onNext={handleNextTrack}
+        onPrev={handlePrevTrack}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
+        volume={Number(volume) || 0}
+        setVolume={setVolume}
+        onOpenEqualizer={() => setIsEqOpen(true)}
+        onOpenLyrics={() => setIsLyricsOpen(true)}
+        sleepTimer={sleepTimer}
+        setSleepTimer={setSleepTimer}
+        isBuffering={isBuffering}
+        playbackError={playbackError}
+      />
+
+      <EqualizerModal
+        isOpen={isEqOpen}
+        onClose={() => setIsEqOpen(false)}
+        eqBands={eqBands}
+        setEqBands={setEqBands}
+        eqPreset={eqPreset}
+        setEqPreset={setEqPreset}
+        speed={Number(speed) || 1}
+        setSpeed={setSpeed}
+        audioNormalize={audioNormalize}
+        setAudioNormalize={setAudioNormalize}
+        silenceSkip={silenceSkip}
+        setSilenceSkip={setSilenceSkip}
+      />
+
+      <LyricsModal
+        isOpen={isLyricsOpen}
+        onClose={() => setIsLyricsOpen(false)}
+        currentTrack={playingTrack}
+        currentTime={currentTime}
+        lyricsData={lyricsData}
+      />
+    </div>
+  );
+}
