@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/lumina-logo.svg" width="96" height="96" alt="Lumina logo">
+</p>
+
 # Lumina
 
 Lumina is a polished Electron music player that searches YouTube with `yt-dlp`

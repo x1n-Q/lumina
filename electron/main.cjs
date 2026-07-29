@@ -12,6 +12,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'Lumina',
+    icon: path.join(__dirname, '../public/lumina-logo.png'),
     backgroundColor: '#0a0b0e',
     autoHideMenuBar: true,
     webPreferences: {
