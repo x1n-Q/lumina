@@ -1,13 +1,16 @@
 import React from 'react';
 import {
   Bookmark,
+  Check,
   Clock3,
   Compass,
   Database,
   Disc3,
+  Download,
   Heart,
   Headphones,
   Library,
+  Loader2,
   Play,
   Radio,
   Sparkles,
@@ -36,16 +39,29 @@ export default function HomeView({
   isLoading,
   likedSongs,
   onToggleLike,
+  downloadedSongs = [],
+  downloadStates = {},
+  downloadNotice,
+  onToggleDownload,
   viewMode = 'home',
   engineHealth,
   savedCount = 0,
   recentCount = 0,
+  downloadCount = 0,
   dataSource = 'Unknown',
   notice = ''
 }) {
   const featuredTrack = currentTrack || tracks[0];
-  const isDiscovery = viewMode === 'home' || viewMode === 'explore';
+  const isHomeDashboard = viewMode === 'home';
+  const activeGenreName = MUSIC_GENRES.find((genre) => genre.id === activeGenre)?.name;
   const collectionConfig = {
+    explore: {
+      eyebrow: 'Live music discovery',
+      title: 'Explore music',
+      description: 'Choose a genre below or search for any song, artist, album, or mood.',
+      icon: Compass,
+      empty: 'Choose another genre or search for something new.'
+    },
     library: {
       eyebrow: 'Listening history',
       title: 'Recently played',
@@ -59,20 +75,31 @@ export default function HomeView({
       description: 'Everything you save stays here between Lumina sessions.',
       icon: Heart,
       empty: 'Tap the heart on any track to build your favorites.'
+    },
+    downloads: {
+      eyebrow: 'Available offline',
+      title: 'Downloaded tracks',
+      description: 'Music saved to Lumina’s local cache for reliable playback between sessions.',
+      icon: Download,
+      empty: 'Use the download button on a YouTube track to save it locally.'
     }
   };
   const collection = collectionConfig[viewMode];
   const CollectionIcon = collection?.icon || Library;
   const resultTitle = searchQuery
     ? `Results for “${searchQuery}”`
-    : collection?.title || (viewMode === 'explore' ? 'Explore results' : 'Recommended for you');
+    : viewMode === 'explore'
+      ? `${activeGenreName || 'Explore'} picks`
+      : collection?.title || 'Recommended for you';
   const resultSubtitle = searchQuery
     ? `Live results from ${dataSource}`
-    : collection?.description || 'A fresh mix from your selected mood';
+    : viewMode === 'explore'
+      ? 'Fresh live results from your selected genre'
+      : collection?.description || 'A fresh mix from your selected mood';
 
   return (
     <div className="page-stack">
-      {isDiscovery ? (
+      {isHomeDashboard ? (
         <>
           <section className="hero-panel">
             <div className="hero-copy">
@@ -176,6 +203,14 @@ export default function HomeView({
               </div>
             </div>
             <div className="metric-card">
+              <div className="metric-icon"><Download size={16} /></div>
+              <div>
+                <div className="metric-label">Downloads</div>
+                <div className="metric-value">{downloadCount}</div>
+                <div className="metric-detail">Cached on this device</div>
+              </div>
+            </div>
+            <div className="metric-card">
               <div className="metric-icon"><Clock3 size={16} /></div>
               <div>
                 <div className="metric-label">Recently played</div>
@@ -234,6 +269,49 @@ export default function HomeView({
         </section>
       )}
 
+      {viewMode === 'explore' && (
+        <section className="section-block">
+          <div className="section-heading">
+            <div className="section-title-wrap">
+              <div className="section-icon">
+                <Compass size={16} />
+              </div>
+              <div>
+                <h2 className="section-title">Browse genres</h2>
+                <p className="section-subtitle">Switch genres to load a fresh live mix</p>
+              </div>
+            </div>
+          </div>
+          <div className="genre-row">
+            {MUSIC_GENRES.map((genre) => (
+              <button
+                key={genre.id}
+                className={`genre-chip ${activeGenre === genre.id ? 'active' : ''}`}
+                onClick={() => onSelectGenre(genre)}
+              >
+                {genre.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {notice && !isHomeDashboard && viewMode === 'explore' && (
+        <div className="dashboard-notice">
+          <WifiOff size={15} />
+          <span>{notice}</span>
+        </div>
+      )}
+
+      {downloadNotice && (
+        <div className={`download-notice ${downloadNotice.type}`}>
+          {downloadNotice.type === 'error'
+            ? <WifiOff size={15} />
+            : <Check size={15} />}
+          <span>{downloadNotice.text}</span>
+        </div>
+      )}
+
       <section className="section-block">
         <div className="section-heading">
           <div className="section-title-wrap">
@@ -267,6 +345,9 @@ export default function HomeView({
             {tracks.map((track) => {
               const isSelected = currentTrack?.id === track.id;
               const isLiked = likedSongs.includes(track.id);
+              const isDownloaded = downloadedSongs.includes(track.id);
+              const downloadState = downloadStates[track.id];
+              const canDownload = Boolean(track.videoId) && !track.isPreview;
 
               return (
                 <article
@@ -285,16 +366,39 @@ export default function HomeView({
                   <div className="track-artwork">
                     <img className="cover-img" src={track.cover} alt={track.title} />
                     {isSelected && <span className="now-playing-badge">NOW PLAYING</span>}
-                    <button
-                      className={`like-button ${isLiked ? 'liked' : ''}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onToggleLike(track);
-                      }}
-                      title={isLiked ? 'Remove from favorites' : 'Add to favorites'}
-                    >
-                      <Heart size={15} fill={isLiked ? 'currentColor' : 'none'} />
-                    </button>
+                    <div className="track-actions">
+                      <button
+                        className={`like-button ${isLiked ? 'liked' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onToggleLike(track);
+                        }}
+                        title={isLiked ? 'Remove from favorites' : 'Add to favorites'}
+                        aria-label={isLiked ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Heart size={15} fill={isLiked ? 'currentColor' : 'none'} />
+                      </button>
+                      {canDownload && (
+                        <button
+                          className={`download-button ${isDownloaded ? 'downloaded' : ''}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onToggleDownload(track);
+                          }}
+                          title={isDownloaded ? 'Remove local download' : 'Download for offline playback'}
+                          aria-label={isDownloaded ? 'Remove local download' : 'Download track'}
+                          disabled={Boolean(downloadState)}
+                        >
+                          {downloadState ? (
+                            <Loader2 className="download-spinner" size={15} />
+                          ) : isDownloaded ? (
+                            <Check size={15} />
+                          ) : (
+                            <Download size={15} />
+                          )}
+                        </button>
+                      )}
+                    </div>
                     <button
                       className="track-play"
                       onClick={(event) => {

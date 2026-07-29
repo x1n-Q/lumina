@@ -2,6 +2,7 @@ import React from 'react';
 import {
   AudioLines,
   Compass,
+  Download,
   Heart,
   Home,
   Library,
@@ -9,11 +10,13 @@ import {
   Settings,
   SlidersHorizontal
 } from 'lucide-react';
+import LuminaLogo from './LuminaLogo';
 
 const MENU_ITEMS = [
   { id: 'home', label: 'Discover', icon: Home },
   { id: 'explore', label: 'Explore', icon: Compass },
   { id: 'library', label: 'Library', icon: Library },
+  { id: 'downloads', label: 'Downloads', icon: Download },
   { id: 'favorites', label: 'Favorites', icon: Heart },
 ];
 
@@ -23,7 +26,8 @@ export default function Sidebar({
   onOpenEqualizer,
   engineHealth,
   favoriteCount,
-  historyCount
+  historyCount,
+  downloadCount
 }) {
   const engineStatus = engineHealth?.status || 'checking';
   const statusLabel = engineHealth?.ok
@@ -31,8 +35,18 @@ export default function Sidebar({
     : engineStatus === 'checking' || engineStatus === 'starting'
       ? 'STARTING'
       : 'OFFLINE';
+  const activeStreams = engineHealth?.activeStreams || 0;
+  const cachedTracks = engineHealth?.cacheEntries || 0;
+  const engineDetail = !engineHealth?.ok
+    ? 'Connecting to audio service'
+    : activeStreams > 0
+      ? `${activeStreams} ${activeStreams === 1 ? 'track' : 'tracks'} playing`
+      : cachedTracks > 0
+        ? `${cachedTracks} ${cachedTracks === 1 ? 'track' : 'tracks'} ready`
+        : 'Ready to play';
   const navCounts = {
     library: historyCount,
+    downloads: downloadCount,
     favorites: favoriteCount
   };
 
@@ -40,14 +54,13 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="brand">
         <div className="brand-mark">
-          <AudioLines size={21} strokeWidth={2.6} />
+          <LuminaLogo className="brand-logo" />
         </div>
         <div className="brand-copy">
           <div className="brand-name-row">
             <h1 className="brand-name">Lumina</h1>
             <span className="brand-badge">PC</span>
           </div>
-          <p className="brand-subtitle">Your music, uninterrupted</p>
         </div>
       </div>
 
@@ -96,13 +109,7 @@ export default function Sidebar({
         </div>
         <div className="engine-detail">
           <AudioLines size={13} />
-          <span>
-            {engineHealth?.ok
-              ? engineHealth.activeStreams > 0
-                ? `${engineHealth.activeStreams} active stream`
-                : `${engineHealth.cacheEntries || 0} cached streams`
-              : 'Waiting for local audio proxy'}
-          </span>
+          <span>{engineDetail}</span>
         </div>
       </div>
     </aside>

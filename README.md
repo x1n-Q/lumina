@@ -6,6 +6,8 @@ and streams seekable audio through a private local proxy.
 ## Features
 
 - Full-length YouTube audio with seeking
+- Live Explore browsing across genres and search
+- Persistent local downloads with offline, seekable playback
 - Persistent favorites and listening history
 - Synced LRCLIB lyrics
 - Live audio-engine health dashboard

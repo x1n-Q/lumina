@@ -13,6 +13,7 @@ const TAB_TITLES = {
   home: ['Made for listening', 'Discover'],
   explore: ['Find something new', 'Explore'],
   library: ['Your collection', 'Library'],
+  downloads: ['Available offline', 'Downloads'],
   favorites: ['Saved for later', 'Favorites'],
   settings: ['Make it yours', 'Preferences'],
 };

@@ -9,7 +9,14 @@ import LyricsModal from './components/LyricsModal';
 
 import { SAMPLE_TRACKS } from './data/sampleTracks';
 import { fetchLyricsFromLRCLIB, parseLrc } from './services/lrclib';
-import { getEngineHealth, MUSIC_GENRES, searchLiveMusic } from './services/musicEngine';
+import {
+  downloadTrack,
+  getDownloadedTracks,
+  getEngineHealth,
+  MUSIC_GENRES,
+  removeDownloadedTrack,
+  searchLiveMusic
+} from './services/musicEngine';
 import { usePersistentState } from './hooks/usePersistentState';
 
 const DEFAULT_GENRE_ID = MUSIC_GENRES[0]?.id || '';
@@ -20,6 +27,8 @@ const INITIAL_ENGINE_HEALTH = {
   uptimeSeconds: 0,
   ytDlpVersion: null,
   cacheEntries: 0,
+  savedTracks: 0,
+  savedBytes: 0,
   searches: 0,
   streamRequests: 0,
   activeStreams: 0
@@ -66,6 +75,9 @@ export default function App() {
     [],
     ['metrolist:history']
   );
+  const [downloadedTracks, setDownloadedTracks] = useState([]);
+  const [downloadStates, setDownloadStates] = useState({});
+  const [downloadNotice, setDownloadNotice] = useState(null);
 
   const [playingTrack, setPlayingTrack] = useState(null);
   const [playingQueue, setPlayingQueue] = useState([]);
@@ -120,20 +132,30 @@ export default function App() {
   const favorites = useMemo(() => normalizeTrackCollection(likedTracks), [likedTracks]);
   const history = useMemo(() => normalizeTrackCollection(recentTracks), [recentTracks]);
   const likedSongIds = useMemo(() => favorites.map((track) => track.id), [favorites]);
+  const downloadedSongIds = useMemo(
+    () => downloadedTracks.map((track) => track.id),
+    [downloadedTracks]
+  );
 
   const visibleTracks = useMemo(() => {
     if (activeTab === 'favorites') return favorites;
     if (activeTab === 'library') return history;
+    if (activeTab === 'downloads') return downloadedTracks;
     return tracks;
-  }, [activeTab, favorites, history, tracks]);
+  }, [activeTab, downloadedTracks, favorites, history, tracks]);
 
-  const viewMode = activeTab === 'favorites'
-    ? 'favorites'
-    : activeTab === 'library'
-      ? 'library'
-      : activeTab === 'explore'
-        ? 'explore'
-        : 'home';
+  const viewMode = ['favorites', 'library', 'downloads', 'explore'].includes(activeTab)
+    ? activeTab
+    : 'home';
+
+  const refreshDownloadedTracks = useCallback(async () => {
+    try {
+      const savedTracks = await getDownloadedTracks();
+      setDownloadedTracks(normalizeTrackCollection(savedTracks));
+    } catch {
+      // The engine health indicator handles temporary backend outages.
+    }
+  }, []);
 
   const refreshEngineHealth = useCallback(async () => {
     try {
@@ -151,15 +173,18 @@ export default function App() {
 
   useEffect(() => {
     refreshEngineHealth();
+    refreshDownloadedTracks();
     const interval = window.setInterval(refreshEngineHealth, 15000);
     window.addEventListener('online', refreshEngineHealth);
     window.addEventListener('focus', refreshEngineHealth);
+    window.addEventListener('focus', refreshDownloadedTracks);
     return () => {
       window.clearInterval(interval);
       window.removeEventListener('online', refreshEngineHealth);
       window.removeEventListener('focus', refreshEngineHealth);
+      window.removeEventListener('focus', refreshDownloadedTracks);
     };
-  }, [refreshEngineHealth]);
+  }, [refreshDownloadedTracks, refreshEngineHealth]);
 
   const loadMusicCategory = useCallback(async (query) => {
     setIsLoading(true);
@@ -190,14 +215,15 @@ export default function App() {
 
   const handleSearchQueryChange = (value) => {
     setSearchQuery(value);
-    if (value.trim() && !['home', 'explore'].includes(activeTab)) {
-      setActiveTab('home');
+    if (value.trim() && activeTab !== 'explore') {
+      setActiveTab('explore');
     }
   };
 
   const handleSelectGenre = (genre) => {
     setActiveGenre(genre.id);
     setSearchQuery('');
+    setActiveTab('explore');
   };
 
   const handleToggleLike = (track) => {
@@ -207,6 +233,45 @@ export default function App() {
         ? current.filter((item) => item.id !== track.id)
         : [track, ...current];
     });
+  };
+
+  const handleToggleDownload = async (track) => {
+    const isDownloaded = downloadedSongIds.includes(track.id);
+    setDownloadStates((current) => ({
+      ...current,
+      [track.id]: isDownloaded ? 'removing' : 'downloading'
+    }));
+    setDownloadNotice(null);
+
+    try {
+      if (isDownloaded) {
+        await removeDownloadedTrack(track);
+        setDownloadedTracks((current) => current.filter((item) => item.id !== track.id));
+        setDownloadNotice({ type: 'success', text: `Removed “${track.title}” from downloads.` });
+      } else {
+        const savedTrack = await downloadTrack(track);
+        setDownloadedTracks((current) => [
+          savedTrack,
+          ...current.filter((item) => item.id !== savedTrack.id)
+        ]);
+        setDownloadNotice({
+          type: 'success',
+          text: `Saved “${track.title}” for local playback.`
+        });
+      }
+      refreshEngineHealth();
+    } catch (error) {
+      setDownloadNotice({
+        type: 'error',
+        text: error.message || 'The track could not be saved.'
+      });
+    } finally {
+      setDownloadStates((current) => {
+        const next = { ...current };
+        delete next[track.id];
+        return next;
+      });
+    }
   };
 
   const recordRecentTrack = useCallback((track) => {
@@ -423,6 +488,7 @@ export default function App() {
         engineHealth={engineHealth}
         favoriteCount={favorites.length}
         historyCount={history.length}
+        downloadCount={downloadedTracks.length}
       />
 
       <div className="main-wrapper">
@@ -448,10 +514,15 @@ export default function App() {
               isLoading={isLoading && ['home', 'explore'].includes(activeTab)}
               likedSongs={likedSongIds}
               onToggleLike={handleToggleLike}
+              downloadedSongs={downloadedSongIds}
+              downloadStates={downloadStates}
+              downloadNotice={downloadNotice}
+              onToggleDownload={handleToggleDownload}
               viewMode={viewMode}
               engineHealth={engineHealth}
               savedCount={favorites.length}
               recentCount={history.length}
+              downloadCount={downloadedTracks.length}
               dataSource={searchMeta.source}
               notice={searchMeta.message}
             />

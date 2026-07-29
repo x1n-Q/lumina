@@ -174,7 +174,7 @@ h6 {
   display: flex;
   width: var(--sidebar-width);
   height: 100%;
-  padding: 22px 14px 136px;
+  padding: 22px 14px;
   flex: 0 0 var(--sidebar-width);
   flex-direction: column;
   gap: 26px;
@@ -186,47 +186,39 @@ h6 {
 
 .brand {
   display: flex;
+  min-height: 44px;
   align-items: center;
   gap: 12px;
-  padding: 2px 8px;
+  padding: 1px 8px;
 }
 
 .brand-mark {
-  position: relative;
   display: grid;
   width: 42px;
   height: 42px;
   flex: 0 0 42px;
   place-items: center;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 13px;
-  color: #08090d;
-  background: linear-gradient(145deg, #fff 0%, var(--primary) 45%, var(--primary-strong) 100%);
-  box-shadow: 0 10px 26px var(--primary-glow);
+  filter: drop-shadow(0 10px 15px rgba(69, 35, 190, 0.32));
 }
 
-.brand-mark::after {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  top: -17px;
-  right: -10px;
-  border-radius: 50%;
-  background: white;
-  content: '';
-  filter: blur(9px);
-  opacity: 0.6;
+.brand-logo {
+  display: block;
+  width: 44px;
+  height: 44px;
 }
 
 .brand-copy {
+  display: flex;
   min-width: 0;
+  align-items: center;
 }
 
 .brand-name-row {
   display: flex;
   align-items: center;
   gap: 7px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .brand-name {
@@ -243,13 +235,6 @@ h6 {
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.08em;
-}
-
-.brand-subtitle {
-  margin-top: 2px;
-  color: var(--text-tertiary);
-  font-size: 10px;
-  font-weight: 600;
 }
 
 .nav-group {
@@ -323,25 +308,27 @@ h6 {
   position: relative;
   display: flex;
   margin-top: auto;
-  padding: 13px;
+  padding: 11px 12px;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
 .engine-card::after {
   position: absolute;
-  width: 90px;
-  height: 90px;
-  right: -38px;
-  bottom: -48px;
+  width: 58px;
+  height: 58px;
+  right: -30px;
+  bottom: -32px;
   border-radius: 50%;
   background: var(--primary-glow);
   content: '';
-  filter: blur(24px);
+  filter: blur(20px);
+  opacity: 0.7;
 }
 
 .engine-row,
@@ -352,12 +339,14 @@ h6 {
 }
 
 .engine-row {
+  position: relative;
+  z-index: 1;
   justify-content: space-between;
   gap: 8px;
 }
 
 .engine-name {
-  gap: 7px;
+  gap: 6px;
   font-size: 11px;
   font-weight: 700;
 }
@@ -390,9 +379,12 @@ h6 {
 }
 
 .engine-detail {
-  gap: 7px;
+  position: relative;
+  z-index: 1;
+  gap: 6px;
   color: var(--text-tertiary);
-  font-size: 10px;
+  font-size: 9px;
+  font-weight: 600;
 }
 
 /* Header */
@@ -747,7 +739,7 @@ h6 {
 /* Dashboard */
 .dashboard-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -825,6 +817,26 @@ h6 {
   background: rgba(251, 191, 36, 0.055);
   font-size: 10px;
   font-weight: 600;
+}
+
+.download-notice {
+  display: flex;
+  min-height: 42px;
+  padding: 0 14px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 12px;
+  color: var(--success);
+  background: rgba(74, 222, 128, 0.06);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.download-notice.error {
+  border-color: rgba(251, 113, 133, 0.22);
+  color: var(--danger);
+  background: rgba(251, 113, 133, 0.065);
 }
 
 .collection-header {
@@ -1097,11 +1109,18 @@ h6 {
   transform: translateY(0) scale(1);
 }
 
-.like-button {
+.track-actions {
   position: absolute;
   z-index: 2;
   top: 10px;
   right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.like-button,
+.download-button {
   display: grid;
   width: 31px;
   height: 31px;
@@ -1116,6 +1135,21 @@ h6 {
 
 .like-button.liked {
   color: var(--danger);
+}
+
+.download-button.downloaded {
+  border-color: rgba(74, 222, 128, 0.25);
+  color: var(--success);
+  background: rgba(8, 30, 18, 0.78);
+}
+
+.download-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.download-spinner {
+  animation: spin 0.9s linear infinite;
 }
 
 .now-playing-badge {
