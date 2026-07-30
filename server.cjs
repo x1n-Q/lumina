@@ -431,6 +431,9 @@ function proxyAudioRequest(audio, req, res, redirectsRemaining = 3) {
     });
 
     proxyReq.on('error', reject);
+    proxyReq.setTimeout(20000, () => {
+      proxyReq.destroy(new Error('Upstream media request timed out'));
+    });
     res.once('close', () => {
       if (!res.writableEnded && !proxyReq.destroyed) proxyReq.destroy();
     });
@@ -648,7 +651,8 @@ app.get('/api/stream/:videoId', async (req, res) => {
       }
     }
 
-    let audio = await resolveAudio(videoId);
+    const forceRefresh = req.query.refresh === '1';
+    let audio = await resolveAudio(videoId, forceRefresh);
 
     // Signed Google media URLs occasionally expire early. Resolve once more before
     // failing if the cached URL has gone stale.

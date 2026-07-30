@@ -193,6 +193,7 @@ export default function App() {
   );
   const [isBuffering, setIsBuffering] = useState(false);
   const [playbackError, setPlaybackError] = useState('');
+  const [playbackAttempt, setPlaybackAttempt] = useState(0);
 
   const [isEqOpen, setIsEqOpen] = useState(false);
   const [eqBands, setEqBands] = usePersistentState(
@@ -440,6 +441,7 @@ export default function App() {
     if (playingTrack?.id === track.id) {
       audioRef.current.currentTime = 0;
     } else {
+      setPlaybackAttempt(0);
       setPlayingTrack(track);
     }
     setIsPlaying(true);
@@ -570,6 +572,16 @@ export default function App() {
     setIsPlaying((currentlyPlaying) => !currentlyPlaying);
   }, []);
 
+  const handleRetryPlayback = useCallback(() => {
+    if (!playingTrack?.streamUrl) return;
+    audioRef.current.pause();
+    setPlaybackError('');
+    setCurrentTime(0);
+    setIsBuffering(true);
+    setPlaybackAttempt((attempt) => attempt + 1);
+    setIsPlaying(true);
+  }, [playingTrack?.streamUrl]);
+
   const handleSeek = (time) => {
     if (!Number.isFinite(time)) return;
     audioRef.current.currentTime = time;
@@ -581,13 +593,17 @@ export default function App() {
     if (!playingTrack?.streamUrl) return;
 
     audio.pause();
-    audio.src = playingTrack.streamUrl;
+    const shouldRefreshStream = playbackAttempt > 0 && Boolean(playingTrack.videoId);
+    const separator = playingTrack.streamUrl.includes('?') ? '&' : '?';
+    audio.src = shouldRefreshStream
+      ? `${playingTrack.streamUrl}${separator}refresh=1&attempt=${playbackAttempt}`
+      : playingTrack.streamUrl;
     audio.load();
     setCurrentTime(0);
     setDuration(playingTrack.duration || 0);
     setPlaybackError('');
     setIsBuffering(true);
-  }, [playingTrack]);
+  }, [playbackAttempt, playingTrack]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -600,7 +616,7 @@ export default function App() {
 
     let cancelled = false;
     audio.play().catch((error) => {
-      if (cancelled) return;
+      if (cancelled || error?.name === 'AbortError') return;
       console.error('Audio playback failed:', error);
       setPlaybackError('Unable to play this track. Check the audio engine or try another song.');
       setIsBuffering(false);
@@ -826,6 +842,7 @@ export default function App() {
         setSleepTimer={setSleepTimer}
         isBuffering={isBuffering}
         playbackError={playbackError}
+        onRetryPlayback={handleRetryPlayback}
         queuedTracks={manualQueue}
         contextTracks={contextUpNext}
         queueContextLabel={queueContextLabel}

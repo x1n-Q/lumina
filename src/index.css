@@ -1364,6 +1364,41 @@ h6 {
   color: var(--danger);
 }
 
+.player-error-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.player-error-row .player-status {
+  min-width: 0;
+}
+
+.player-retry {
+  margin-top: 4px;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--danger) 50%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.player-retry:hover {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.player-retry:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+
 .player-center {
   display: flex;
   min-width: 0;

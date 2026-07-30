@@ -45,6 +45,7 @@ export default function MusicPlayer({
   setSleepTimer,
   isBuffering,
   playbackError,
+  onRetryPlayback,
   queuedTracks = [],
   contextTracks = [],
   queueContextLabel = 'Current mix',
@@ -94,11 +95,16 @@ export default function MusicPlayer({
         <div className="player-copy">
           <div className="player-title">{currentTrack.title}</div>
           <div className="player-artist">{currentTrack.artist}</div>
-          {(playbackError || (isBuffering && isPlaying)) && (
-            <div className={`player-status ${playbackError ? 'error' : ''}`}>
-              {playbackError || 'Buffering audio…'}
+          {playbackError ? (
+            <div className="player-error-row">
+              <div className="player-status error">{playbackError}</div>
+              <button className="player-retry" onClick={onRetryPlayback} type="button">
+                Retry
+              </button>
             </div>
-          )}
+          ) : isBuffering && isPlaying ? (
+            <div className="player-status">Buffering audio…</div>
+          ) : null}
         </div>
       </div>
 

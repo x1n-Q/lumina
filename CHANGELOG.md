@@ -2,6 +2,18 @@
 
 All notable Lumina changes are documented here.
 
+## Unreleased
+
+### Added
+
+- A visible Retry action beside playback errors that reloads the current song
+
+### Fixed
+
+- Retrying a YouTube track now discards its cached media URL and resolves a fresh stream
+- Interrupted play requests no longer appear as genuine playback failures
+- Unresponsive upstream media connections now time out promptly before stream recovery
+
 ## [1.4.1] - 2026-07-30
 
 ### Fixed
