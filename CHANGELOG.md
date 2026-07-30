@@ -2,6 +2,15 @@
 
 All notable Lumina changes are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Installable Vercel PWA with a versioned offline app shell and network-only authentication APIs
+- Dedicated Apple touch, 192px, 512px, and mask-safe application icons
+- iPhone and iPad Home Screen metadata with safe-area-aware standalone display
+- Platform-aware installation guidance in Preferences
+
 ## [1.6.0] - 2026-07-30
 
 ### Added

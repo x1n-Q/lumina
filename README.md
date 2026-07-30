@@ -75,6 +75,17 @@ version uses playable song previews by default because the full `yt-dlp` engine
 runs privately inside the desktop app. Advanced deployers may provide a
 compatible HTTPS backend through `VITE_BACKEND_URL`.
 
+### Install on iPhone or iPad
+
+After deploying to Vercel, open the HTTPS deployment in Safari, sign in, tap
+the **Share** button, and choose **Add to Home Screen**. Lumina launches in a
+standalone app window with its own Home Screen icon. The same instructions are
+available under **Preferences → Install Lumina**.
+
+Other compatible mobile browsers show an **Install app** action in Preferences.
+The service worker caches only the application shell and static assets;
+authentication endpoints always remain network-only and are never cached.
+
 ## Development requirements
 
 - Node.js and npm
