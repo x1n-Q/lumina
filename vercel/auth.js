@@ -19,14 +19,19 @@ function safeEqual(left, right) {
 
 export function getAuthConfig() {
   const username = String(process.env.LUMINA_USERNAME || '').trim();
-  const password = String(process.env.LUMINA_PASSWORD || '');
-  const secret = String(process.env.LUMINA_SESSION_SECRET || '');
+  const password = String(process.env.LUMINA_PASSWORD || '').trim();
+  const secret = String(process.env.LUMINA_SESSION_SECRET || '').trim();
+  const problems = [];
 
-  if (!username || !password || secret.length < 32) {
-    throw new Error(
-      'Set LUMINA_USERNAME, LUMINA_PASSWORD, and a LUMINA_SESSION_SECRET of at least 32 characters.'
-    );
+  if (!username) problems.push('LUMINA_USERNAME is missing');
+  if (!password) problems.push('LUMINA_PASSWORD is missing');
+  if (!secret) {
+    problems.push('LUMINA_SESSION_SECRET is missing');
+  } else if (secret.length < 32) {
+    problems.push(`LUMINA_SESSION_SECRET has ${secret.length} characters; it needs at least 32`);
   }
+
+  if (problems.length > 0) throw new Error(problems.join('. '));
   return { username, password, secret };
 }
 
