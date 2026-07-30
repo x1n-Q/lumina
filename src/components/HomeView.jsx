@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ArrowRight,
   Bookmark,
   Check,
   Clock3,
@@ -49,10 +50,15 @@ export default function HomeView({
   recentCount = 0,
   downloadCount = 0,
   dataSource = 'Unknown',
-  notice = ''
+  notice = '',
+  dashboardTracks = [],
+  onOpenExplore
 }) {
-  const featuredTrack = currentTrack || tracks[0];
   const isHomeDashboard = viewMode === 'home';
+  const homeTracks = dashboardTracks.length > 0 ? dashboardTracks.slice(0, 4) : tracks.slice(0, 4);
+  const displayTracks = isHomeDashboard ? homeTracks : tracks;
+  const featuredTrack = currentTrack || homeTracks[0] || tracks[0];
+  const hasListeningHistory = dashboardTracks.length > 0;
   const activeGenreName = MUSIC_GENRES.find((genre) => genre.id === activeGenre)?.name;
   const collectionConfig = {
     explore: {
@@ -105,22 +111,26 @@ export default function HomeView({
             <div className="hero-copy">
               <div className="hero-kicker">
                 {engineHealth?.ok ? <Sparkles size={12} /> : <WifiOff size={12} />}
-                {engineHealth?.ok ? 'Full-length streaming' : 'Preview fallback mode'}
+                {engineHealth?.ok ? 'Your daily device mix' : 'Preview fallback mode'}
               </div>
               <h1 className="hero-title">
                 Your next favorite song is <span>one search away.</span>
               </h1>
               <p className="hero-description">
-                Search across YouTube, keep full tracks playing while you browse,
-                and return to every favorite or recent listen automatically.
+                A fresh mix shaped by what you play and save on this PC.
+                Search and genre browsing stay ready in Explore.
               </p>
               <div className="hero-actions">
-                {tracks.length > 0 && (
-                  <button className="btn btn-primary" onClick={() => onSelectTrack(tracks[0])}>
+                {featuredTrack && (
+                  <button className="btn btn-primary" onClick={() => onSelectTrack(featuredTrack)}>
                     <Play size={15} fill="currentColor" />
-                    Play top result
+                    {currentTrack ? 'Resume listening' : 'Start listening'}
                   </button>
                 )}
+                <button className="btn btn-secondary" onClick={onOpenExplore}>
+                  Explore music
+                  <ArrowRight size={14} />
+                </button>
                 <div className="hero-meta">
                   <Headphones size={13} />
                   {engineHealth?.ok
@@ -227,30 +237,6 @@ export default function HomeView({
             </div>
           )}
 
-          <section className="section-block">
-            <div className="section-heading">
-              <div className="section-title-wrap">
-                <div className="section-icon">
-                  <Compass size={16} />
-                </div>
-                <div>
-                  <h2 className="section-title">Explore moods</h2>
-                  <p className="section-subtitle">Pick a lane or search for anything</p>
-                </div>
-              </div>
-            </div>
-            <div className="genre-row">
-              {MUSIC_GENRES.map((genre) => (
-                <button
-                  key={genre.id}
-                  className={`genre-chip ${activeGenre === genre.id ? 'active' : ''}`}
-                  onClick={() => onSelectGenre(genre)}
-                >
-                  {genre.name}
-                </button>
-              ))}
-            </div>
-          </section>
         </>
       ) : (
         <section className="collection-header">
@@ -320,13 +306,21 @@ export default function HomeView({
             </div>
             <div>
               <h2 className="section-title">
-                {resultTitle}
+                {isHomeDashboard
+                  ? hasListeningHistory ? 'Jump back in' : 'A quick mix for you'
+                  : resultTitle}
               </h2>
-              <p className="section-subtitle">{resultSubtitle}</p>
+              <p className="section-subtitle">
+                {isHomeDashboard
+                  ? hasListeningHistory
+                    ? 'Your most recently played tracks'
+                    : 'Four picks to get your session started'
+                  : resultSubtitle}
+              </p>
             </div>
           </div>
           <span className="track-count">
-            {tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}
+            {displayTracks.length} {displayTracks.length === 1 ? 'track' : 'tracks'}
           </span>
         </div>
 
@@ -335,14 +329,14 @@ export default function HomeView({
             <Disc3 size={30} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
             <span>Finding the best available streams…</span>
           </div>
-        ) : tracks.length === 0 ? (
+        ) : displayTracks.length === 0 ? (
           <div className="empty-state">
             <CollectionIcon size={29} color="var(--primary)" />
             <span>{collection?.empty || 'No tracks found. Try a different search.'}</span>
           </div>
         ) : (
           <div className="tracks-grid">
-            {tracks.map((track) => {
+            {displayTracks.map((track) => {
               const isSelected = currentTrack?.id === track.id;
               const isLiked = likedSongs.includes(track.id);
               const isDownloaded = downloadedSongs.includes(track.id);

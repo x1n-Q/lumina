@@ -10,8 +10,8 @@ const ACCENTS = [
 ];
 
 const TAB_TITLES = {
-  home: ['Made for listening', 'Discover'],
-  explore: ['Find something new', 'Explore'],
+  home: ['Your listening space', 'Discover'],
+  explore: ['Search, browse, and wander', 'Explore'],
   library: ['Your collection', 'Library'],
   downloads: ['Available offline', 'Downloads'],
   favorites: ['Saved for later', 'Favorites'],

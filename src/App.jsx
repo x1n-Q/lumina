@@ -21,6 +21,30 @@ import { usePersistentState } from './hooks/usePersistentState';
 
 const DEFAULT_GENRE_ID = MUSIC_GENRES[0]?.id || '';
 const MAX_RECENT_TRACKS = 24;
+const DISCOVERY_QUERIES = [
+  'indie hidden gems music mix',
+  'dreamy alternative music discovery',
+  'late night electronic hidden gems',
+  'feel good global music discoveries',
+  'soulful acoustic new artists',
+  'cinematic instrumental music discovery',
+  'underrated r&b and neo soul mix',
+  'modern jazz and chill fusion',
+  'Japanese city pop hidden gems',
+  'ambient focus music discovery',
+  'alternative rock deep cuts',
+  'fresh dance and electronic discoveries'
+];
+const DISCOVERY_MODIFIERS = [
+  'deep cuts',
+  'underrated artists',
+  'listener favorites',
+  'fresh finds',
+  'album tracks',
+  'new discoveries',
+  'cult classics',
+  'editor picks'
+];
 const INITIAL_ENGINE_HEALTH = {
   ok: false,
   status: 'checking',
@@ -38,9 +62,68 @@ function normalizeTrackCollection(value) {
   return Array.isArray(value) ? value.filter((track) => track?.id && track?.streamUrl) : [];
 }
 
+function hashString(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function getDailyDiscoveryKey(deviceSeed) {
+  const date = new Date();
+  const day = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+  ].join('-');
+  return `${deviceSeed}:${day}`;
+}
+
+function buildDiscoveryQuery(deviceSeed, favorites, history) {
+  const dailyKey = getDailyDiscoveryKey(deviceSeed);
+  const listeningProfile = [...favorites, ...history];
+  const artists = [...new Set(listeningProfile.map((track) => track.artist).filter(Boolean))];
+  const genres = [...new Set(listeningProfile.map((track) => track.genre).filter(Boolean))];
+  const modifier = DISCOVERY_MODIFIERS[
+    hashString(`${dailyKey}:modifier`) % DISCOVERY_MODIFIERS.length
+  ];
+
+  if (artists.length > 0) {
+    const artist = artists[hashString(`${dailyKey}:artist`) % artists.length];
+    const genre = genres.length > 0
+      ? genres[hashString(`${dailyKey}:genre`) % genres.length]
+      : '';
+    return `music similar to ${artist} ${genre} ${modifier}`.trim();
+  }
+
+  const base = DISCOVERY_QUERIES[
+    hashString(`${dailyKey}:query`) % DISCOVERY_QUERIES.length
+  ];
+  return `${base} ${modifier}`;
+}
+
+function personalizeTrackOrder(tracks, discoveryKey) {
+  if (!discoveryKey) return tracks;
+  return [...tracks].sort((first, second) => (
+    hashString(`${discoveryKey}:${first.id}`)
+    - hashString(`${discoveryKey}:${second.id}`)
+  ));
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
+  const initialDiscoverySeed = useMemo(
+    () => globalThis.crypto?.randomUUID?.()
+      || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    []
+  );
+  const [discoverySeed] = usePersistentState(
+    'lumina:discovery-seed',
+    initialDiscoverySeed
+  );
   const [accent, setAccent] = usePersistentState(
     'lumina:accent',
     'indigo',
@@ -123,6 +206,7 @@ export default function App() {
   const [isLyricsOpen, setIsLyricsOpen] = useState(false);
   const [lyricsData, setLyricsData] = useState([]);
   const [sleepTimer, setSleepTimer] = useState(null);
+  const musicRequestRef = useRef(0);
 
   const audioRef = useRef(null);
   if (!audioRef.current) {
@@ -135,6 +219,11 @@ export default function App() {
   const downloadedSongIds = useMemo(
     () => downloadedTracks.map((track) => track.id),
     [downloadedTracks]
+  );
+  const discoveryKey = getDailyDiscoveryKey(discoverySeed);
+  const discoveryQuery = useMemo(
+    () => buildDiscoveryQuery(discoverySeed, favorites, history),
+    [discoverySeed, favorites, history]
   );
 
   const visibleTracks = useMemo(() => {
@@ -186,32 +275,49 @@ export default function App() {
     };
   }, [refreshDownloadedTracks, refreshEngineHealth]);
 
-  const loadMusicCategory = useCallback(async (query) => {
+  const loadMusicCategory = useCallback(async (query, trackOrderKey = '') => {
+    const requestId = musicRequestRef.current + 1;
+    musicRequestRef.current = requestId;
     setIsLoading(true);
     try {
       const result = await searchLiveMusic(query);
-      setTracks(result.tracks);
+      if (requestId !== musicRequestRef.current) return;
+      setTracks(personalizeTrackOrder(result.tracks, trackOrderKey));
       setSearchMeta({
         source: result.source,
         degraded: result.degraded,
         message: result.message
       });
     } finally {
-      setIsLoading(false);
-      refreshEngineHealth();
+      if (requestId === musicRequestRef.current) {
+        setIsLoading(false);
+        refreshEngineHealth();
+      }
     }
   }, [refreshEngineHealth]);
 
   useEffect(() => {
+    if (!['home', 'explore'].includes(activeTab)) return undefined;
+
     const genre = MUSIC_GENRES.find((item) => item.id === activeGenre) || MUSIC_GENRES[0];
     const typedQuery = searchQuery.trim();
-    const query = typedQuery || genre?.query || 'music';
+    const isDiscover = activeTab === 'home';
+    const query = isDiscover
+      ? discoveryQuery
+      : typedQuery || genre?.query || 'music';
     const timer = window.setTimeout(
-      () => loadMusicCategory(query),
-      typedQuery ? 400 : 0
+      () => loadMusicCategory(query, isDiscover ? discoveryKey : ''),
+      !isDiscover && typedQuery ? 400 : 0
     );
     return () => window.clearTimeout(timer);
-  }, [activeGenre, loadMusicCategory, searchQuery]);
+  }, [
+    activeGenre,
+    activeTab,
+    discoveryKey,
+    discoveryQuery,
+    loadMusicCategory,
+    searchQuery
+  ]);
 
   const handleSearchQueryChange = (value) => {
     setSearchQuery(value);
@@ -511,7 +617,7 @@ export default function App() {
               searchQuery={searchQuery}
               activeGenre={activeGenre}
               onSelectGenre={handleSelectGenre}
-              isLoading={isLoading && ['home', 'explore'].includes(activeTab)}
+              isLoading={isLoading && activeTab === 'explore'}
               likedSongs={likedSongIds}
               onToggleLike={handleToggleLike}
               downloadedSongs={downloadedSongIds}
@@ -525,6 +631,8 @@ export default function App() {
               downloadCount={downloadedTracks.length}
               dataSource={searchMeta.source}
               notice={searchMeta.message}
+              dashboardTracks={history}
+              onOpenExplore={() => setActiveTab('explore')}
             />
           )}
 
