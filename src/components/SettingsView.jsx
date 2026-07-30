@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Check,
   Code2,
+  Download,
   ExternalLink,
   LogOut,
   Moon,
   RadioTower,
+  RefreshCw,
   ShieldCheck,
   X
 } from 'lucide-react';
@@ -21,6 +23,35 @@ function formatUptime(seconds) {
 
 export default function SettingsView({ oledMode, setOledMode, engineHealth, onLogout }) {
   const isWebPreview = engineHealth?.mode === 'web-preview';
+  const desktop = window.luminaDesktop;
+  const [updateState, setUpdateState] = useState(null);
+
+  useEffect(() => {
+    if (!desktop?.getUpdateState) return undefined;
+    let active = true;
+    desktop.getUpdateState().then((state) => {
+      if (active && state) setUpdateState(state);
+    }).catch(() => {});
+    const unsubscribe = desktop.onUpdateStatus?.((state) => {
+      if (active) setUpdateState(state);
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [desktop]);
+
+  const runUpdateAction = async (action) => {
+    try {
+      await action();
+    } catch {
+      setUpdateState((state) => ({
+        ...state,
+        status: 'error',
+        message: 'The update service is unavailable. Open GitHub Releases to update manually.'
+      }));
+    }
+  };
   const engineFeatures = isWebPreview ? [
     {
       label: 'Mobile web catalog',
@@ -160,6 +191,73 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth, onLo
             ? 'The mobile web player keeps favorites and history in this browser. Its single-user login is verified by your own Vercel deployment.'
             : 'Audio is resolved by the local Lumina engine on your computer. The desktop app does not require an account or send your library to a Lumina server.'}
         </div>
+      </section>
+
+      <section className="settings-card update-card">
+        <div>
+          <h2 className="settings-card-title">
+            <span className="settings-card-icon">
+              <Download size={16} />
+            </span>
+            App updates
+          </h2>
+          <div className="update-copy">
+            <strong>
+              {desktop
+                ? `Lumina ${updateState?.currentVersion || 'desktop'}`
+                : 'Managed by your web deployment'}
+            </strong>
+            <span>
+              {desktop
+                ? (updateState?.message || 'Loading update service…')
+                : 'Redeploy the repository in Vercel to publish web updates.'}
+            </span>
+          </div>
+          {updateState?.status === 'downloading' && (
+            <div className="update-progress" aria-label={`Update ${Math.round(updateState.percent || 0)} percent downloaded`}>
+              <span style={{ width: `${updateState.percent || 0}%` }} />
+            </div>
+          )}
+        </div>
+        {desktop && (
+          <div className="developer-actions">
+            {updateState?.status === 'available' && (
+              <button
+                className="developer-link"
+                onClick={() => runUpdateAction(desktop.downloadUpdate)}
+                type="button"
+              >
+                Download {updateState.availableVersion}
+                <Download size={14} />
+              </button>
+            )}
+            {updateState?.status === 'downloaded' && (
+              <button className="developer-link" onClick={desktop.installUpdate} type="button">
+                Restart & install
+                <RefreshCw size={14} />
+              </button>
+            )}
+            {!['available', 'downloaded', 'downloading'].includes(updateState?.status) && (
+              <button
+                className="developer-link"
+                onClick={() => runUpdateAction(desktop.checkForUpdates)}
+                disabled={updateState?.status === 'checking'}
+                type="button"
+              >
+                {updateState?.status === 'checking' ? 'Checking…' : 'Check for updates'}
+                <RefreshCw size={14} />
+              </button>
+            )}
+            <button
+              className="developer-link secondary"
+              onClick={() => runUpdateAction(desktop.openReleases)}
+              type="button"
+            >
+              GitHub Releases
+              <ExternalLink size={14} />
+            </button>
+          </div>
+        )}
       </section>
 
       <section className="settings-card developer-card">

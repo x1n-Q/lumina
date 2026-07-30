@@ -1,4 +1,5 @@
-const { app, BrowserWindow, dialog, ipcMain, screen, shell } = require('electron');
+const { app, BrowserWindow, clipboard, dialog, ipcMain, screen, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const fs = require('fs');
 const path = require('path');
 const { startAudioServer, stopAudioServer } = require('../server.cjs');
@@ -9,6 +10,14 @@ app.setName('Lumina');
 let mainWindow = null;
 let miniPlayerWindow = null;
 let audioEnginePort = null;
+const RELEASES_URL = 'https://github.com/x1n-Q/lumina/releases/latest';
+let updateState = {
+  status: 'idle',
+  currentVersion: app.getVersion(),
+  availableVersion: '',
+  percent: 0,
+  message: 'Ready to check for updates.'
+};
 let latestPlaybackState = {
   track: null,
   isPlaying: false,
@@ -19,6 +28,94 @@ let latestPlaybackState = {
 function sendPlaybackStateToMiniPlayer() {
   if (!miniPlayerWindow || miniPlayerWindow.isDestroyed()) return;
   miniPlayerWindow.webContents.send('playback-state:update', latestPlaybackState);
+}
+
+function isMainWindowSender(event) {
+  return Boolean(mainWindow && !mainWindow.isDestroyed()
+    && event.sender.id === mainWindow.webContents.id);
+}
+
+function setUpdateState(patch) {
+  updateState = { ...updateState, ...patch, currentVersion: app.getVersion() };
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:status', updateState);
+  }
+}
+
+function automaticUpdatesSupported() {
+  return app.isPackaged && process.platform === 'win32'
+    && !process.env.PORTABLE_EXECUTABLE_FILE;
+}
+
+function setupAutoUpdater() {
+  if (!app.isPackaged) {
+    setUpdateState({
+      status: 'development',
+      message: 'Update checks are available in packaged releases.'
+    });
+    return;
+  }
+
+  if (!automaticUpdatesSupported()) {
+    setUpdateState({
+      status: 'manual',
+      message: process.env.PORTABLE_EXECUTABLE_FILE
+        ? 'Portable edition updates manually. Open GitHub Releases to download the newest version.'
+        : 'Automatic installation is currently available in the Windows Setup edition.'
+    });
+    return;
+  }
+
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('checking-for-update', () => {
+    setUpdateState({ status: 'checking', percent: 0, message: 'Checking GitHub for updates…' });
+  });
+  autoUpdater.on('update-available', (info) => {
+    setUpdateState({
+      status: 'available',
+      availableVersion: String(info.version || ''),
+      percent: 0,
+      message: `Lumina ${info.version} is ready to download.`
+    });
+  });
+  autoUpdater.on('update-not-available', () => {
+    setUpdateState({
+      status: 'current',
+      availableVersion: '',
+      percent: 0,
+      message: 'You have the latest version of Lumina.'
+    });
+  });
+  autoUpdater.on('download-progress', (progress) => {
+    const percent = Math.min(100, Math.max(0, Number(progress.percent) || 0));
+    setUpdateState({
+      status: 'downloading',
+      percent,
+      message: `Downloading update… ${Math.round(percent)}%`
+    });
+  });
+  autoUpdater.on('update-downloaded', (info) => {
+    setUpdateState({
+      status: 'downloaded',
+      availableVersion: String(info.version || updateState.availableVersion),
+      percent: 100,
+      message: 'Update downloaded. Restart Lumina to install it.'
+    });
+  });
+  autoUpdater.on('error', (error) => {
+    writeStartupLog('GitHub update check failed.', error);
+    setUpdateState({
+      status: 'error',
+      message: 'Could not reach GitHub Updates. You can retry or open Releases.'
+    });
+  });
+
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((error) => {
+      writeStartupLog('Automatic update check failed.', error);
+    });
+  }, 8000);
 }
 
 function writeStartupLog(message, error) {
@@ -189,6 +286,60 @@ ipcMain.on('external:open', (event, target) => {
   }
 });
 
+ipcMain.handle('discord:share-track', async (event, rawTrack) => {
+  if (!isMainWindowSender(event)) return { ok: false, message: 'Sharing is unavailable.' };
+
+  const title = String(rawTrack?.title || 'a track').slice(0, 180);
+  const artist = String(rawTrack?.artist || 'Unknown artist').slice(0, 120);
+  const videoId = String(rawTrack?.videoId || '');
+  const url = /^[A-Za-z0-9_-]{11}$/.test(videoId)
+    ? `https://www.youtube.com/watch?v=${videoId}`
+    : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} ${artist}`)}`;
+  clipboard.writeText(`Listening to ${title} by ${artist} on Lumina\n${url}`);
+
+  try {
+    await shell.openExternal('discord://-/channels/@me');
+  } catch {
+    await shell.openExternal('https://discord.com/channels/@me');
+  }
+
+  return {
+    ok: true,
+    message: 'Track link copied. Paste it into Discord so friends can play the same song.'
+  };
+});
+
+ipcMain.handle('update:get-state', (event) => (
+  isMainWindowSender(event) ? updateState : null
+));
+
+ipcMain.handle('update:check', async (event) => {
+  if (!isMainWindowSender(event)) return null;
+  if (!automaticUpdatesSupported()) {
+    await shell.openExternal(RELEASES_URL);
+    return updateState;
+  }
+  await autoUpdater.checkForUpdates();
+  return updateState;
+});
+
+ipcMain.handle('update:download', async (event) => {
+  if (!isMainWindowSender(event) || updateState.status !== 'available') return updateState;
+  await autoUpdater.downloadUpdate();
+  return updateState;
+});
+
+ipcMain.on('update:install', (event) => {
+  if (!isMainWindowSender(event) || updateState.status !== 'downloaded') return;
+  autoUpdater.quitAndInstall(false, true);
+});
+
+ipcMain.handle('update:open-releases', async (event) => {
+  if (!isMainWindowSender(event)) return false;
+  await shell.openExternal(RELEASES_URL);
+  return true;
+});
+
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!hasSingleInstanceLock) {
@@ -229,6 +380,7 @@ app.whenReady().then(async () => {
     audioEnginePort = typeof address === 'object' && address ? address.port : null;
     if (!audioEnginePort) throw new Error('The local audio engine did not provide a usable port.');
     createWindow(audioEnginePort);
+    setupAutoUpdater();
   } catch (error) {
     showStartupError(`The local audio engine failed to start: ${error.message}`, error);
     app.quit();

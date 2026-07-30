@@ -8,6 +8,8 @@ export default function EqualizerModal({
   setEqBands,
   eqPreset,
   setEqPreset,
+  bassBoost,
+  setBassBoost,
   speed,
   setSpeed,
   audioNormalize,
@@ -18,17 +20,20 @@ export default function EqualizerModal({
   if (!isOpen) return null;
 
   const presets = {
-    Flat: [0, 0, 0, 0, 0],
-    'Bass Boost': [6, 4, 1, 0, 0],
-    Acoustic: [3, 2, 4, 3, 2],
-    'Vocal Boost': [-1, 1, 5, 4, 1],
-    Rock: [5, 3, -1, 3, 5],
-    Electronic: [4, 3, 0, 2, 4],
+    Flat: { bands: [0, 0, 0, 0, 0], bass: 0 },
+    'Bass Boost': { bands: [2, 1, 0, 0, 0], bass: 6 },
+    'Deep Bass': { bands: [3, 2, -1, 0, 1], bass: 10 },
+    'Extreme Bass': { bands: [4, 3, -2, 0, 2], bass: 15 },
+    Acoustic: { bands: [3, 2, 4, 3, 2], bass: 0 },
+    'Vocal Boost': { bands: [-1, 1, 5, 4, 1], bass: 0 },
+    Rock: { bands: [5, 3, -1, 3, 5], bass: 2 },
+    Electronic: { bands: [4, 3, 0, 2, 4], bass: 4 },
   };
 
   const handlePresetSelect = (name) => {
     setEqPreset(name);
-    setEqBands(presets[name]);
+    setEqBands(presets[name].bands);
+    setBassBoost(presets[name].bass);
   };
 
   const handleBandChange = (index, value) => {
@@ -97,6 +102,41 @@ export default function EqualizerModal({
               </button>
             ))}
           </div>
+        </div>
+
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(124, 92, 255, 0.14), var(--bg-base))',
+          padding: '14px 16px',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid rgba(124, 92, 255, 0.3)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '700' }}>Bass strength</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                Real low-frequency boost with automatic clipping headroom
+              </div>
+            </div>
+            <strong style={{ color: 'var(--primary)', fontSize: '14px' }}>+{bassBoost} dB</strong>
+          </div>
+          <input
+            aria-label="Bass boost strength"
+            type="range"
+            min="0"
+            max="15"
+            step="1"
+            value={bassBoost}
+            onChange={(event) => {
+              setBassBoost(Number.parseInt(event.target.value, 10));
+              setEqPreset('Custom');
+            }}
+            style={{ width: '100%' }}
+          />
+          {bassBoost >= 13 && (
+            <div style={{ color: '#ffb84d', fontSize: '10px', marginTop: '7px' }}>
+              Extreme boost can overwhelm small speakers. Lower it if you hear distortion.
+            </div>
+          )}
         </div>
 
         {/* 5 Sliders */}

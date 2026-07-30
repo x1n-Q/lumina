@@ -9,11 +9,18 @@ function subscribe(channel, callback) {
 
 contextBridge.exposeInMainWorld('luminaDesktop', {
   openMiniPlayer: () => ipcRenderer.send('mini-player:open'),
+  shareToDiscord: (track) => ipcRenderer.invoke('discord:share-track', track),
   openExternal: (url) => ipcRenderer.send('external:open', url),
   hideMiniPlayer: () => ipcRenderer.send('mini-player:hide'),
   showMainWindow: () => ipcRenderer.send('main-window:show'),
   sendMiniPlayerCommand: (command) => ipcRenderer.send('mini-player:command', command),
   sendPlaybackState: (state) => ipcRenderer.send('playback-state:update', state),
+  getUpdateState: () => ipcRenderer.invoke('update:get-state'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.send('update:install'),
+  openReleases: () => ipcRenderer.invoke('update:open-releases'),
+  onUpdateStatus: (callback) => subscribe('update:status', callback),
   onMiniPlayerCommand: (callback) => subscribe('mini-player:command', callback),
   onPlaybackState: (callback) => subscribe('playback-state:update', callback)
 });

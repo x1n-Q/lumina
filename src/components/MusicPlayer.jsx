@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronUp,
   ListMusic,
+  MessageCircle,
   Mic2,
   Moon,
   Pause,
@@ -46,6 +47,8 @@ export default function MusicPlayer({
   isBuffering,
   playbackError,
   onRetryPlayback,
+  onShareToDiscord,
+  discordShareStatus,
   queuedTracks = [],
   contextTracks = [],
   queueContextLabel = 'Current mix',
@@ -155,6 +158,14 @@ export default function MusicPlayer({
       </div>
 
       <div className="player-tools">
+        <button
+          className={`tool-button discord-share-tool ${discordShareStatus ? 'active' : ''}`}
+          onClick={onShareToDiscord}
+          title={discordShareStatus || 'Share this track to Discord'}
+          aria-label="Share this track to Discord"
+        >
+          <MessageCircle size={17} />
+        </button>
         {canOpenMiniPlayer && (
           <button
             className="tool-button mini-player-tool"
@@ -352,6 +363,9 @@ export default function MusicPlayer({
           />
         </div>
       </div>
+      {discordShareStatus && (
+        <div className="player-share-notice" role="status">{discordShareStatus}</div>
+      )}
     </div>
   );
 }

@@ -1530,6 +1530,22 @@ h6 {
   background: var(--primary-soft);
 }
 
+.player-share-notice {
+  position: absolute;
+  right: 18px;
+  bottom: calc(100% + 10px);
+  max-width: 340px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-glow);
+  border-radius: 11px;
+  color: var(--text-primary);
+  background: rgba(16, 18, 26, 0.97);
+  box-shadow: var(--shadow-md);
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .queue-tool-wrap {
   position: relative;
 }
@@ -2070,6 +2086,53 @@ h6 {
   color: var(--text-tertiary);
   font-size: 8px;
   font-weight: 600;
+}
+
+.update-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.update-copy {
+  display: flex;
+  margin: 15px 0 0 42px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.update-copy strong {
+  font-size: 12px;
+}
+
+.update-copy span {
+  max-width: 480px;
+  color: var(--text-tertiary);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.update-progress {
+  width: min(420px, calc(100vw - 120px));
+  height: 5px;
+  margin: 12px 0 0 42px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.update-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 180ms ease;
+}
+
+.developer-link:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .developer-card {
@@ -2732,12 +2795,14 @@ input[type='range'] {
     padding: 18px;
   }
 
-  .developer-card {
+  .developer-card,
+  .update-card {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .developer-copy {
+  .developer-copy,
+  .update-copy {
     margin-left: 0;
   }
 

@@ -18,6 +18,7 @@ import {
   searchLiveMusic
 } from './services/musicEngine';
 import { usePersistentState } from './hooks/usePersistentState';
+import { useAudioEffects } from './hooks/useAudioEffects';
 
 const DEFAULT_GENRE_ID = MUSIC_GENRES[0]?.id || '';
 const MAX_RECENT_TRACKS = 24;
@@ -194,6 +195,7 @@ export default function App({ onLogout = null }) {
   const [isBuffering, setIsBuffering] = useState(false);
   const [playbackError, setPlaybackError] = useState('');
   const [playbackAttempt, setPlaybackAttempt] = useState(0);
+  const [discordShareStatus, setDiscordShareStatus] = useState('');
 
   const [isEqOpen, setIsEqOpen] = useState(false);
   const [eqBands, setEqBands] = usePersistentState(
@@ -205,6 +207,10 @@ export default function App({ onLogout = null }) {
     'lumina:eq-preset',
     'Flat',
     ['metrolist:eq-preset']
+  );
+  const [bassBoost, setBassBoost] = usePersistentState(
+    'lumina:bass-boost',
+    0
   );
   const [audioNormalize, setAudioNormalize] = usePersistentState(
     'lumina:normalize',
@@ -224,8 +230,16 @@ export default function App({ onLogout = null }) {
 
   const audioRef = useRef(null);
   if (!audioRef.current) {
-    audioRef.current = new Audio();
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audioRef.current = audio;
   }
+  const activateAudioEffects = useAudioEffects({
+    audioRef,
+    eqBands,
+    bassBoost,
+    audioNormalize
+  });
 
   const favorites = useMemo(() => normalizeTrackCollection(likedTracks), [likedTracks]);
   const history = useMemo(() => normalizeTrackCollection(recentTracks), [recentTracks]);
@@ -433,6 +447,7 @@ export default function App({ onLogout = null }) {
 
   const beginTrack = useCallback((track) => {
     if (!track) return;
+    activateAudioEffects().catch(() => {});
     setPlaybackError('');
     setCurrentTime(0);
     setDuration(track.duration || 0);
@@ -445,7 +460,7 @@ export default function App({ onLogout = null }) {
       setPlayingTrack(track);
     }
     setIsPlaying(true);
-  }, [playingTrack?.id, recordRecentTrack]);
+  }, [activateAudioEffects, playingTrack?.id, recordRecentTrack]);
 
   const handleSelectTrack = (track, sourceTracks = visibleTracks) => {
     const playableSource = normalizeTrackCollection(sourceTracks);
@@ -568,9 +583,10 @@ export default function App({ onLogout = null }) {
   };
 
   const handleTogglePlay = useCallback(() => {
+    activateAudioEffects().catch(() => {});
     setPlaybackError('');
     setIsPlaying((currentlyPlaying) => !currentlyPlaying);
-  }, []);
+  }, [activateAudioEffects]);
 
   const handleRetryPlayback = useCallback(() => {
     if (!playingTrack?.streamUrl) return;
@@ -581,6 +597,50 @@ export default function App({ onLogout = null }) {
     setPlaybackAttempt((attempt) => attempt + 1);
     setIsPlaying(true);
   }, [playingTrack?.streamUrl]);
+
+  const handleShareToDiscord = useCallback(async () => {
+    if (!playingTrack) return;
+    const payload = {
+      title: playingTrack.title,
+      artist: playingTrack.artist,
+      videoId: playingTrack.videoId
+    };
+
+    try {
+      let message = '';
+      if (window.luminaDesktop?.shareToDiscord) {
+        const result = await window.luminaDesktop.shareToDiscord(payload);
+        message = result?.message || 'Track link copied for Discord.';
+      } else {
+        const videoUrl = /^[A-Za-z0-9_-]{11}$/.test(String(payload.videoId || ''))
+          ? `https://www.youtube.com/watch?v=${payload.videoId}`
+          : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${payload.title} ${payload.artist}`)}`;
+        const shareData = {
+          title: `Listen to ${payload.title}`,
+          text: `${payload.title} by ${payload.artist}`,
+          url: videoUrl
+        };
+        if (navigator.share) {
+          await navigator.share(shareData);
+          message = 'Track shared.';
+        } else {
+          await navigator.clipboard.writeText(
+            `${shareData.text}\n${shareData.url}`
+          );
+          message = 'Track link copied. Paste it into Discord.';
+        }
+      }
+      setDiscordShareStatus(message);
+    } catch {
+      setDiscordShareStatus('Could not open Discord. Please try again.');
+    }
+  }, [playingTrack]);
+
+  useEffect(() => {
+    if (!discordShareStatus) return undefined;
+    const timeout = window.setTimeout(() => setDiscordShareStatus(''), 4500);
+    return () => window.clearTimeout(timeout);
+  }, [discordShareStatus]);
 
   const handleSeek = (time) => {
     if (!Number.isFinite(time)) return;
@@ -615,7 +675,7 @@ export default function App({ onLogout = null }) {
     }
 
     let cancelled = false;
-    audio.play().catch((error) => {
+    activateAudioEffects().then(() => audio.play()).catch((error) => {
       if (cancelled || error?.name === 'AbortError') return;
       console.error('Audio playback failed:', error);
       setPlaybackError('Unable to play this track. Check the audio engine or try another song.');
@@ -627,7 +687,7 @@ export default function App({ onLogout = null }) {
     return () => {
       cancelled = true;
     };
-  }, [isPlaying, playingTrack, refreshEngineHealth]);
+  }, [activateAudioEffects, isPlaying, playingTrack, refreshEngineHealth]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -849,6 +909,8 @@ export default function App({ onLogout = null }) {
         isBuffering={isBuffering}
         playbackError={playbackError}
         onRetryPlayback={handleRetryPlayback}
+        onShareToDiscord={handleShareToDiscord}
+        discordShareStatus={discordShareStatus}
         queuedTracks={manualQueue}
         contextTracks={contextUpNext}
         queueContextLabel={queueContextLabel}
@@ -872,6 +934,8 @@ export default function App({ onLogout = null }) {
         setEqBands={setEqBands}
         eqPreset={eqPreset}
         setEqPreset={setEqPreset}
+        bassBoost={Number(bassBoost) || 0}
+        setBassBoost={setBassBoost}
         speed={Number(speed) || 1}
         setSpeed={setSpeed}
         audioNormalize={audioNormalize}
