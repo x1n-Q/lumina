@@ -20,6 +20,7 @@ All notable Lumina changes are documented here.
 - Added complete-song web playback through the official embedded YouTube player
 - Added authenticated server-side YouTube search with a private Vercel API key
 - Corrected preview labels and durations so 30-second samples are never presented as full audio
+- Removed the translucent logo highlight and synchronized the sidebar, favicon, desktop, and PWA marks
 
 ## [1.6.0] - 2026-07-30
 

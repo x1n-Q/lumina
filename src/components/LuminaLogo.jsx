@@ -22,7 +22,6 @@ export default function LuminaLogo({ className = '' }) {
       </defs>
 
       <rect x="4" y="4" width="56" height="56" rx="17" fill="url(#lumina-mark-gradient)" filter="url(#lumina-mark-shadow)" />
-      <path d="M5 28C12 14 25 7 43 8C28 13 17 23 12 39C8 36 6 32 5 28Z" fill="white" fillOpacity="0.16" />
       <path
         d="M18 18V41C18 44.866 21.134 48 25 48H47"
         stroke="white"
