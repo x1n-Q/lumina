@@ -31,8 +31,11 @@ export default function Sidebar({
 }) {
   const engineStatus = engineHealth?.status || 'checking';
   const isWebPreview = engineHealth?.mode === 'web-preview';
+  const isWebYouTube = engineHealth?.mode === 'web-youtube';
   const statusLabel = isWebPreview
     ? 'PREVIEW'
+    : isWebYouTube
+      ? 'YOUTUBE'
     : engineHealth?.ok
     ? 'ONLINE'
     : engineStatus === 'checking' || engineStatus === 'starting'
@@ -42,6 +45,8 @@ export default function Sidebar({
   const cachedTracks = engineHealth?.cacheEntries || 0;
   const engineDetail = isWebPreview
     ? 'Playable song previews'
+    : isWebYouTube
+      ? 'Complete songs via YouTube'
     : !engineHealth?.ok
     ? 'Connecting to audio service'
     : activeStreams > 0

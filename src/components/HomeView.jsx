@@ -59,6 +59,7 @@ export default function HomeView({
   onPlayRandom
 }) {
   const isHomeDashboard = viewMode === 'home';
+  const isPreviewMode = engineHealth?.mode === 'web-preview';
   const homeTracks = dashboardTracks.length > 0 ? dashboardTracks.slice(0, 4) : tracks.slice(0, 4);
   const displayTracks = isHomeDashboard ? homeTracks : tracks;
   const featuredTrack = currentTrack || homeTracks[0] || tracks[0];
@@ -114,8 +115,8 @@ export default function HomeView({
           <section className="hero-panel">
             <div className="hero-copy">
               <div className="hero-kicker">
-                {engineHealth?.ok ? <Sparkles size={12} /> : <WifiOff size={12} />}
-                {engineHealth?.ok ? 'Your daily device mix' : 'Preview fallback mode'}
+                {!isPreviewMode && engineHealth?.ok ? <Sparkles size={12} /> : <WifiOff size={12} />}
+                {isPreviewMode ? 'Preview fallback mode' : 'Your daily device mix'}
               </div>
               <h1 className="hero-title">
                 Your next favorite song is <span>one search away.</span>
@@ -140,9 +141,9 @@ export default function HomeView({
                 </button>
                 <div className="hero-meta">
                   <Headphones size={13} />
-                  {engineHealth?.ok
-                    ? `${dataSource} · Full audio`
-                    : `${dataSource} · Limited previews`}
+                  {isPreviewMode
+                    ? `${dataSource} · 30-second previews`
+                    : `${dataSource} · Complete songs`}
                 </div>
               </div>
             </div>
@@ -192,12 +193,16 @@ export default function HomeView({
               <div>
                 <div className="metric-label">Audio engine</div>
                 <div className="metric-value">
-                  {engineHealth?.ok
+                  {isPreviewMode
+                    ? 'Preview mode'
+                    : engineHealth?.ok
                     ? engineHealth.activeStreams > 0 ? 'Streaming' : 'Online'
                     : engineHealth?.status === 'offline' ? 'Offline' : 'Connecting'}
                 </div>
                 <div className="metric-detail">
-                  {engineHealth?.ytDlpVersion
+                  {isPreviewMode
+                    ? 'Add YouTube API key for full songs'
+                    : engineHealth?.ytDlpVersion
                     ? `yt-dlp ${engineHealth.ytDlpVersion}`
                     : 'Checking local service'}
                 </div>
@@ -451,8 +456,10 @@ export default function HomeView({
                     <h3 className="track-title">{track.title}</h3>
                     <p className="track-artist">{track.artist}</p>
                     <div className="track-meta">
-                      <span className="track-genre">{track.genre || 'Full audio'}</span>
-                      <span>{formatDuration(track.duration)}</span>
+                      <span className="track-genre">
+                        {track.isPreview ? '30-sec preview' : track.genre || 'Full audio'}
+                      </span>
+                      <span>{formatDuration(track.isPreview ? 30 : track.duration)}</span>
                     </div>
                   </div>
                 </article>

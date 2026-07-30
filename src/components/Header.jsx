@@ -29,6 +29,7 @@ export default function Header({
   const searchRef = useRef(null);
   const [eyebrow, title] = TAB_TITLES[activeTab] || TAB_TITLES.home;
   const isWebPreview = engineHealth?.mode === 'web-preview';
+  const isWebYouTube = engineHealth?.mode === 'web-youtube';
 
   useEffect(() => {
     const handleShortcut = (event) => {
@@ -77,6 +78,8 @@ export default function Header({
           <RadioTower size={13} />
           {isWebPreview
             ? 'Preview mode'
+            : isWebYouTube
+              ? 'Full songs ready'
             : engineHealth?.ok
             ? engineHealth.activeStreams > 0
               ? 'Streaming now'

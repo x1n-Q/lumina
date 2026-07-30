@@ -6,6 +6,7 @@ import SettingsView from './components/SettingsView';
 import MusicPlayer from './components/MusicPlayer';
 import EqualizerModal from './components/EqualizerModal';
 import LyricsModal from './components/LyricsModal';
+import YouTubePlayerSurface from './components/YouTubePlayerSurface';
 
 import { SAMPLE_TRACKS } from './data/sampleTracks';
 import { fetchLyricsFromLRCLIB, parseLrc } from './services/lrclib';
@@ -61,7 +62,9 @@ const INITIAL_ENGINE_HEALTH = {
 };
 
 function normalizeTrackCollection(value) {
-  return Array.isArray(value) ? value.filter((track) => track?.id && track?.streamUrl) : [];
+  return Array.isArray(value)
+    ? value.filter((track) => track?.id && (track?.streamUrl || track?.playbackType === 'youtube'))
+    : [];
 }
 
 function hashString(value) {
@@ -229,6 +232,7 @@ export default function App({ onLogout = null }) {
   const musicRequestRef = useRef(0);
 
   const audioRef = useRef(null);
+  const youtubeControllerRef = useRef(null);
   if (!audioRef.current) {
     const audio = new Audio();
     audio.crossOrigin = 'anonymous';
@@ -447,14 +451,20 @@ export default function App({ onLogout = null }) {
 
   const beginTrack = useCallback((track) => {
     if (!track) return;
-    activateAudioEffects().catch(() => {});
+    const usesYouTubePlayer = track.playbackType === 'youtube';
+    if (usesYouTubePlayer) {
+      audioRef.current.pause();
+    } else {
+      activateAudioEffects().catch(() => {});
+    }
     setPlaybackError('');
     setCurrentTime(0);
     setDuration(track.duration || 0);
     recordRecentTrack(track);
 
     if (playingTrack?.id === track.id) {
-      audioRef.current.currentTime = 0;
+      if (usesYouTubePlayer) youtubeControllerRef.current?.seekTo?.(0, true);
+      else audioRef.current.currentTime = 0;
     } else {
       setPlaybackAttempt(0);
       setPlayingTrack(track);
@@ -523,6 +533,17 @@ export default function App({ onLogout = null }) {
     beginTrack(contextQueue[previousIndex]);
   }, [beginTrack, playingQueue, playingQueueIndex, tracks]);
 
+  const handleYouTubeEnded = useCallback(() => {
+    if (repeatMode === 'one') {
+      youtubeControllerRef.current?.seekTo?.(0, true);
+      youtubeControllerRef.current?.playVideo?.();
+      setCurrentTime(0);
+      setIsPlaying(true);
+      return;
+    }
+    handleNextTrack();
+  }, [handleNextTrack, repeatMode]);
+
   const handleQueueTrack = useCallback((track) => {
     if (!playingTrack) {
       setPlayingQueue([track]);
@@ -583,20 +604,31 @@ export default function App({ onLogout = null }) {
   };
 
   const handleTogglePlay = useCallback(() => {
-    activateAudioEffects().catch(() => {});
+    if (playingTrack?.playbackType !== 'youtube') activateAudioEffects().catch(() => {});
     setPlaybackError('');
     setIsPlaying((currentlyPlaying) => !currentlyPlaying);
-  }, [activateAudioEffects]);
+  }, [activateAudioEffects, playingTrack?.playbackType]);
 
   const handleRetryPlayback = useCallback(() => {
-    if (!playingTrack?.streamUrl) return;
+    if (!playingTrack) return;
+    if (playingTrack.playbackType === 'youtube') {
+      setPlaybackError('');
+      setIsBuffering(true);
+      youtubeControllerRef.current?.loadVideoById?.({
+        videoId: playingTrack.videoId,
+        startSeconds: 0
+      });
+      setIsPlaying(true);
+      return;
+    }
+    if (!playingTrack.streamUrl) return;
     audioRef.current.pause();
     setPlaybackError('');
     setCurrentTime(0);
     setIsBuffering(true);
     setPlaybackAttempt((attempt) => attempt + 1);
     setIsPlaying(true);
-  }, [playingTrack?.streamUrl]);
+  }, [playingTrack]);
 
   const handleShareToDiscord = useCallback(async () => {
     if (!playingTrack) return;
@@ -644,13 +676,18 @@ export default function App({ onLogout = null }) {
 
   const handleSeek = (time) => {
     if (!Number.isFinite(time)) return;
+    if (playingTrack?.playbackType === 'youtube') {
+      youtubeControllerRef.current?.seekTo?.(time, true);
+      setCurrentTime(time);
+      return;
+    }
     audioRef.current.currentTime = time;
     setCurrentTime(time);
   };
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!playingTrack?.streamUrl) return;
+    if (!playingTrack?.streamUrl || playingTrack.playbackType === 'youtube') return;
 
     audio.pause();
     const shouldRefreshStream = playbackAttempt > 0 && Boolean(playingTrack.videoId);
@@ -667,7 +704,7 @@ export default function App({ onLogout = null }) {
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!playingTrack?.streamUrl) return;
+    if (!playingTrack?.streamUrl || playingTrack.playbackType === 'youtube') return;
 
     if (!isPlaying) {
       audio.pause();
@@ -749,11 +786,15 @@ export default function App({ onLogout = null }) {
     audioRef.current.volume = Number.isFinite(nextVolume)
       ? Math.min(Math.max(nextVolume, 0), 1)
       : 0.8;
+    youtubeControllerRef.current?.setVolume?.(
+      Math.round(Math.min(Math.max(Number.isFinite(nextVolume) ? nextVolume : 0.8, 0), 1) * 100)
+    );
   }, [volume]);
 
   useEffect(() => {
     const nextSpeed = Number(speed);
     audioRef.current.playbackRate = Number.isFinite(nextSpeed) ? nextSpeed : 1;
+    youtubeControllerRef.current?.setPlaybackRate?.(Number.isFinite(nextSpeed) ? nextSpeed : 1);
   }, [speed]);
 
   useEffect(() => {
@@ -849,6 +890,34 @@ export default function App({ onLogout = null }) {
         />
 
         <main className="content-area">
+          {playingTrack?.playbackType === 'youtube' && (
+            <YouTubePlayerSurface
+              track={playingTrack}
+              isPlaying={isPlaying}
+              volume={Number(volume) || 0}
+              speed={Number(speed) || 1}
+              onController={(controller) => {
+                youtubeControllerRef.current = controller;
+              }}
+              onPlaying={() => {
+                setIsBuffering(false);
+                setPlaybackError('');
+                setIsPlaying(true);
+              }}
+              onPaused={() => setIsPlaying(false)}
+              onBuffering={() => setIsBuffering(true)}
+              onEnded={handleYouTubeEnded}
+              onError={() => {
+                setIsBuffering(false);
+                setIsPlaying(false);
+                setPlaybackError('This YouTube video cannot play here. Try another result.')
+              }}
+              onProgress={(progress) => {
+                setCurrentTime(progress.currentTime);
+                setDuration(progress.duration);
+              }}
+            />
+          )}
           {activeTab !== 'settings' && (
             <HomeView
               tracks={visibleTracks}

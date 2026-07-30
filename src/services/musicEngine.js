@@ -26,6 +26,30 @@ function isPlayableSong(track) {
 
 export async function getEngineHealth() {
   if (IS_WEB_PREVIEW_MODE) {
+    try {
+      const response = await fetch('/api/youtube-search?health=1', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(3000)
+      });
+      if (response.ok) {
+        return {
+          ok: true,
+          status: 'ready',
+          mode: 'web-youtube',
+          uptimeSeconds: 0,
+          ytDlpVersion: null,
+          cacheEntries: 0,
+          savedTracks: 0,
+          savedBytes: 0,
+          searches: 0,
+          streamRequests: 0,
+          activeStreams: 0
+        };
+      }
+    } catch {
+      // The preview catalog remains available when full web playback is not configured.
+    }
     return {
       ok: true,
       status: 'preview',
@@ -148,11 +172,29 @@ async function searchPreviewMusic(query, limit, message) {
 
 export async function searchLiveMusic(query = 'spice and wolf ost', limit = 12) {
   if (IS_WEB_PREVIEW_MODE) {
-    return searchPreviewMusic(
-      query,
-      limit,
-      'Mobile web mode plays song previews. Install Lumina desktop for full audio and downloads.'
-    );
+    try {
+      const response = await fetch(
+        `/api/youtube-search?q=${encodeURIComponent(query)}&limit=${limit}`,
+        { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(12000) }
+      );
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Complete-song search is unavailable.');
+      const tracks = Array.isArray(result) ? result.filter(isPlayableSong) : [];
+      return {
+        tracks,
+        source: 'YouTube full songs',
+        degraded: false,
+        message: tracks.length === 0
+          ? 'No complete songs matched that search. Try fewer words.'
+          : ''
+      };
+    } catch (error) {
+      return searchPreviewMusic(
+        query,
+        limit,
+        `${error.message} Showing 30-second previews until full web playback is configured.`
+      );
+    }
   }
 
   try {

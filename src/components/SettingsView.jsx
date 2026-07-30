@@ -24,7 +24,8 @@ function formatUptime(seconds) {
 }
 
 export default function SettingsView({ oledMode, setOledMode, engineHealth, onLogout }) {
-  const isWebPreview = engineHealth?.mode === 'web-preview';
+  const isWebMode = String(engineHealth?.mode || '').startsWith('web-');
+  const isWebYouTube = engineHealth?.mode === 'web-youtube';
   const desktop = window.luminaDesktop;
   const [updateState, setUpdateState] = useState(null);
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -86,16 +87,16 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth, onLo
       }));
     }
   };
-  const engineFeatures = isWebPreview ? [
+  const engineFeatures = isWebMode ? [
     {
       label: 'Mobile web catalog',
-      value: 'Preview mode',
+      value: isWebYouTube ? 'Complete songs' : '30-sec previews',
       ok: true
     },
     {
-      label: 'Private desktop engine',
-      value: 'Desktop only',
-      ok: true
+      label: 'YouTube web player',
+      value: isWebYouTube ? 'Configured' : 'API key needed',
+      ok: isWebYouTube
     },
     {
       label: 'Local favorites',
@@ -198,8 +199,10 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth, onLo
             ))}
           </div>
           <div className="engine-summary">
-            {isWebPreview ? (
-              'Playable song previews for self-hosted mobile access'
+            {isWebMode ? (
+              isWebYouTube
+                ? 'Complete songs use the official embedded YouTube player'
+                : 'Add YOUTUBE_API_KEY in Vercel to replace 30-second previews'
             ) : (
               <>
                 {formatUptime(engineHealth?.uptimeSeconds)}
@@ -221,7 +224,7 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth, onLo
           Private by design
         </h2>
         <div className="setting-description" style={{ maxWidth: 620, marginTop: 14 }}>
-          {isWebPreview
+          {isWebMode
             ? 'The shared deployment account supports many simultaneous users. Favorites and history remain separate in each browser.'
             : 'Audio is resolved by the local Lumina engine on your computer. The desktop app does not require an account or send your library to a Lumina server.'}
         </div>
