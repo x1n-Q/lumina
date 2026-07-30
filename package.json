@@ -19,6 +19,7 @@
     "start": "electron .",
     "lint": "oxlint",
     "preview": "vite preview",
+    "generate:logo": "node scripts/generate-logo-assets.cjs",
     "prepare:runtime": "node scripts/prepare-yt-dlp.cjs",
     "dist:linux": "npm run build && npm run prepare:runtime -- --linux && electron-builder --linux deb AppImage --x64",
     "dist:win": "npm run build && npm run prepare:runtime -- --win && electron-builder --win nsis portable --x64",
@@ -32,6 +33,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
@@ -51,6 +53,7 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "public/lumina-logo.png",
       "server.cjs",
       "package.json",
       "!**/*.map",

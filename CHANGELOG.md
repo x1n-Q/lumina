@@ -2,6 +2,13 @@
 
 All notable Lumina changes are documented here.
 
+## Unreleased
+
+### Fixed
+
+- Windows title-bar, taskbar, installer, and shortcut icons now use the same current Lumina mark as the in-app sidebar
+- The packaged window now includes its logo asset instead of relying on the executable fallback icon
+
 ## [1.4.0] - 2026-07-30
 
 ### Added
