@@ -2,6 +2,26 @@
 
 All notable Lumina changes are documented here.
 
+## [1.1.0] - 2026-07-30
+
+### Added
+
+- Anonymous per-installation discovery profiles that produce a different daily mix on each PC
+- Local listening-history and favorite signals for more relevant Discover recommendations
+- A direct Explore action from the Discover dashboard
+
+### Changed
+
+- Discover is now a focused dashboard with featured playback, status metrics, and a concise recent-listening shelf
+- Explore remains the dedicated destination for genre browsing, typed searches, and complete result grids
+- Refined the compact Lumina logo, sidebar wordmark, and dashboard action layout
+
+### Fixed
+
+- Long-form compilations, playlists, nonstop mixes, and tracks over 20 minutes appearing as playable songs
+- Stale asynchronous search responses replacing results from the currently active view
+- Identical default Discover ordering across separate Lumina installations
+
 ## [1.0.0] - 2026-07-29
 
 ### Added
