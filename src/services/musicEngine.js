@@ -92,6 +92,29 @@ function getTrackVideoId(track) {
   return '';
 }
 
+/**
+ * Reconnect persisted desktop tracks to the audio engine for this app session.
+ *
+ * Electron starts the local engine on an available port. Favorites, history, and
+ * queued tracks can therefore contain a valid video ID but an obsolete loopback
+ * URL from an earlier session. Always rebuild YouTube stream URLs from the
+ * current backend address instead of attempting to play the stale saved port.
+ */
+export function prepareTrackForPlayback(track) {
+  if (!track || IS_WEB_PREVIEW_MODE || track.playbackType === 'youtube') {
+    return track;
+  }
+
+  const videoId = getTrackVideoId(track);
+  if (!videoId) return track;
+
+  return {
+    ...track,
+    videoId,
+    streamUrl: `${BACKEND_URL}/api/stream/${encodeURIComponent(videoId)}`
+  };
+}
+
 export async function downloadTrack(track) {
   if (IS_WEB_PREVIEW_MODE) {
     throw new Error('Offline downloads are available in the Lumina desktop app.');

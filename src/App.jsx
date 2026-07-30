@@ -15,6 +15,7 @@ import {
   getDownloadedTracks,
   getEngineHealth,
   MUSIC_GENRES,
+  prepareTrackForPlayback,
   removeDownloadedTrack,
   searchLiveMusic
 } from './services/musicEngine';
@@ -63,7 +64,9 @@ const INITIAL_ENGINE_HEALTH = {
 
 function normalizeTrackCollection(value) {
   return Array.isArray(value)
-    ? value.filter((track) => track?.id && (track?.streamUrl || track?.playbackType === 'youtube'))
+    ? value
+      .filter((track) => track?.id && (track?.streamUrl || track?.playbackType === 'youtube'))
+      .map(prepareTrackForPlayback)
     : [];
 }
 
@@ -451,7 +454,8 @@ export default function App({ onLogout = null }) {
 
   const beginTrack = useCallback((track) => {
     if (!track) return;
-    const usesYouTubePlayer = track.playbackType === 'youtube';
+    const playableTrack = prepareTrackForPlayback(track);
+    const usesYouTubePlayer = playableTrack.playbackType === 'youtube';
     if (usesYouTubePlayer) {
       audioRef.current.pause();
     } else {
@@ -459,15 +463,19 @@ export default function App({ onLogout = null }) {
     }
     setPlaybackError('');
     setCurrentTime(0);
-    setDuration(track.duration || 0);
-    recordRecentTrack(track);
+    setDuration(playableTrack.duration || 0);
+    recordRecentTrack(playableTrack);
 
-    if (playingTrack?.id === track.id) {
+    if (playingTrack?.id === playableTrack.id) {
+      setPlayingTrack(playableTrack);
       if (usesYouTubePlayer) youtubeControllerRef.current?.seekTo?.(0, true);
-      else audioRef.current.currentTime = 0;
+      else {
+        audioRef.current.pause();
+        setPlaybackAttempt((attempt) => attempt + 1);
+      }
     } else {
       setPlaybackAttempt(0);
-      setPlayingTrack(track);
+      setPlayingTrack(playableTrack);
     }
     setIsPlaying(true);
   }, [activateAudioEffects, playingTrack?.id, recordRecentTrack]);
