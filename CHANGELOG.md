@@ -2,6 +2,21 @@
 
 All notable Lumina changes are documented here.
 
+## [1.6.0] - 2026-07-30
+
+### Added
+
+- Real Web Audio five-band equalizer processing instead of cosmetic controls
+- Bass Boost, Deep Bass, and Extreme Bass presets with a manual 0–15 dB control
+- Automatic output headroom and functional dynamic-range normalization
+- Discord sharing that copies the current playable YouTube source and opens Discord
+- GitHub Release update checks, download progress, and restart-to-install controls
+
+### Changed
+
+- Portable and non-Windows editions direct users to GitHub Releases for manual updates
+- Preferences now reports the installed desktop version and updater state
+
 ## [1.5.0] - 2026-07-30
 
 ### Added

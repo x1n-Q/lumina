@@ -18,7 +18,9 @@ Created and maintained by **x1n-Q**. Visit
 - Persistent favorites and listening history
 - Synced LRCLIB lyrics
 - Live audio-engine health dashboard
-- Accent themes, OLED mode, speed controls, and equalizer settings
+- Real five-band equalizer, audio normalization, and adjustable bass boost presets
+- Discord track sharing with an exact playable YouTube source
+- GitHub update checks, downloads, and restart-to-install support in Windows Setup releases
 - Offline fallback to iTunes preview metadata
 
 ## Install a release
@@ -33,6 +35,19 @@ Release builds include a checksum-verified `yt-dlp` runtime. Users do not need
 to install Node.js, npm, or `yt-dlp`. For a normal Windows PC, download the
 file whose name starts with **Lumina-Setup**. Do not download GitHub's
 automatically generated **Source code** ZIP files; those are for developers.
+
+Starting with Lumina 1.6.0, the Windows Setup edition can check GitHub Releases
+from **Preferences → App updates**, download a newer installer, and apply it
+after restart. Portable builds keep the manual update flow so the executable
+can stay portable.
+
+## Discord sharing
+
+Use the message button in the desktop player's control bar to copy the current
+track's exact YouTube link and open Discord. Paste the link in a DM, group, or
+server channel so other people can play the same source. Lumina does not join
+or transmit audio into a voice channel; that would require a separately hosted
+Discord bot with permission to join that server.
 
 ## Self-deploy the private mobile web version
 
