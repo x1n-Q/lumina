@@ -9,6 +9,17 @@ const configuredBackendUrl = globalThis.LUMINA_CONFIG?.backendUrl
   || import.meta.env.VITE_BACKEND_URL
   || 'http://127.0.0.1:5174';
 const BACKEND_URL = configuredBackendUrl.replace(/\/$/, '');
+const MAX_TRACK_DURATION_SECONDS = 20 * 60;
+const COMPILATION_TITLE_PATTERN = /\b(full album|complete album|greatest hits|best songs|all songs|non[- ]?stop|playlist|music compilation|hours? of|hour mix)\b/i;
+
+function isPlayableSong(track) {
+  const duration = Number(track?.duration);
+  const title = String(track?.title || '');
+  return Number.isFinite(duration)
+    && duration > 0
+    && duration <= MAX_TRACK_DURATION_SECONDS
+    && !COMPILATION_TITLE_PATTERN.test(title);
+}
 
 export async function getEngineHealth() {
   const response = await fetch(`${BACKEND_URL}/api/health`, {
@@ -81,9 +92,10 @@ export async function searchLiveMusic(query = 'spice and wolf ost', limit = 12) 
     const res = await fetch(url);
     if (!res.ok) throw new Error('Backend search failed');
     const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) {
+    const playableTracks = Array.isArray(data) ? data.filter(isPlayableSong) : [];
+    if (playableTracks.length > 0) {
       return {
-        tracks: data,
+        tracks: playableTracks,
         source: 'YouTube',
         degraded: false,
         message: ''
@@ -109,7 +121,7 @@ export async function searchLiveMusic(query = 'spice and wolf ost', limit = 12) 
           genre: item.primaryGenreName || 'Music',
           releaseDate: item.releaseDate ? item.releaseDate.split('T')[0] : '',
           isPreview: true
-        }));
+        })).filter(isPlayableSong);
       return {
         tracks,
         source: 'iTunes previews',

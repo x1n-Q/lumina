@@ -11,6 +11,8 @@ const { pipeline } = require('stream/promises');
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 5174;
 const MAX_YTDLP_OUTPUT = 20 * 1024 * 1024;
+const MAX_TRACK_DURATION_SECONDS = 20 * 60;
+const COMPILATION_TITLE_PATTERN = /\b(full album|complete album|greatest hits|best songs|all songs|non[- ]?stop|playlist|music compilation|hours? of|hour mix)\b/i;
 const AUDIO_CACHE_TTL = 30 * 60 * 1000;
 const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
 const DOWNLOAD_INDEX_FILE = 'downloads.json';
@@ -309,6 +311,15 @@ function normalizeLimit(value) {
   return Math.min(Math.max(parsed, 1), 25);
 }
 
+function isPlayableSongResult(video) {
+  const duration = Number(video?.duration);
+  const title = String(video?.title || '');
+  return Number.isFinite(duration)
+    && duration > 0
+    && duration <= MAX_TRACK_DURATION_SECONDS
+    && !COMPILATION_TITLE_PATTERN.test(title);
+}
+
 async function resolveAudio(videoId, forceRefresh = false) {
   const cached = audioCache.get(videoId);
   if (!forceRefresh && cached && cached.expires > Date.now()) {
@@ -545,8 +556,9 @@ app.get('/api/search', async (req, res) => {
   try {
     const query = String(req.query.q || 'spice and wolf ost').trim().slice(0, 200);
     const limit = normalizeLimit(req.query.limit);
+    const searchLimit = Math.min(limit * 2, 25);
     const output = await runYtDlp([
-      `ytsearch${limit}:${query}`,
+      `ytsearch${searchLimit}:${query}`,
       '--flat-playlist',
       '--dump-json',
       '--no-warnings',
@@ -565,6 +577,8 @@ app.get('/api/search', async (req, res) => {
         }
       })
       .filter((video) => video && VIDEO_ID_PATTERN.test(video.id))
+      .filter(isPlayableSongResult)
+      .slice(0, limit)
       .map((video) => ({
         id: `yt-${video.id}`,
         videoId: video.id,
