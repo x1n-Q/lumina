@@ -4,6 +4,8 @@ All notable Lumina changes are documented here.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-07-30
+
 ### Added
 
 - Installable Vercel PWA with a versioned offline app shell and network-only authentication APIs
@@ -21,6 +23,11 @@ All notable Lumina changes are documented here.
 - Added authenticated server-side YouTube search with a private Vercel API key
 - Corrected preview labels and durations so 30-second samples are never presented as full audio
 - Removed the translucent logo highlight and synchronized the sidebar, favicon, desktop, and PWA marks
+
+### Fixed
+
+- Reconnected saved Library, Favorites, and queued YouTube tracks to the active desktop audio engine after an app restart
+- Retrying the selected desktop track now reloads it through the current engine instead of reusing an expired local port
 
 ## [1.6.0] - 2026-07-30
 
