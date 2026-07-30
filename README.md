@@ -59,6 +59,10 @@ simultaneously by many browsers and devices, which is useful for a shared demo.
 Each browser keeps its own favorites and history. Deployment owners manage
 their own copy; the project owner does not manage it for them.
 
+Successful logins persist for one year and renew whenever Lumina opens, so
+returning users normally sign in only once. Signing out, clearing browser data,
+or changing `LUMINA_SESSION_SECRET` invalidates that browser's session.
+
 Before deploying, configure these three Vercel environment variables for
 Production and Preview:
 

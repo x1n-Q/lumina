@@ -5,7 +5,7 @@ import {
 } from 'node:crypto';
 
 export const SESSION_COOKIE = 'lumina_session';
-export const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
+export const SESSION_MAX_AGE = 60 * 60 * 24 * 365;
 
 function encode(value) {
   return Buffer.from(value).toString('base64url');
