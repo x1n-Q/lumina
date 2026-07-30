@@ -8,7 +8,9 @@ import {
   Moon,
   RadioTower,
   RefreshCw,
+  Share2,
   ShieldCheck,
+  Smartphone,
   X
 } from 'lucide-react';
 
@@ -25,6 +27,13 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth, onLo
   const isWebPreview = engineHealth?.mode === 'web-preview';
   const desktop = window.luminaDesktop;
   const [updateState, setUpdateState] = useState(null);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isInstalledPwa, setIsInstalledPwa] = useState(
+    window.matchMedia?.('(display-mode: standalone)').matches
+      || window.navigator.standalone === true
+  );
+  const isAppleMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   useEffect(() => {
     if (!desktop?.getUpdateState) return undefined;
@@ -40,6 +49,31 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth, onLo
       unsubscribe?.();
     };
   }, [desktop]);
+
+  useEffect(() => {
+    if (desktop) return undefined;
+    const capturePrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const markInstalled = () => {
+      setInstallPrompt(null);
+      setIsInstalledPwa(true);
+    };
+    window.addEventListener('beforeinstallprompt', capturePrompt);
+    window.addEventListener('appinstalled', markInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', capturePrompt);
+      window.removeEventListener('appinstalled', markInstalled);
+    };
+  }, [desktop]);
+
+  const installPwa = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome === 'accepted') setInstallPrompt(null);
+  };
 
   const runUpdateAction = async (action) => {
     try {
@@ -259,6 +293,46 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth, onLo
           </div>
         )}
       </section>
+
+      {!desktop && (
+        <section className="settings-card update-card">
+          <div>
+            <h2 className="settings-card-title">
+              <span className="settings-card-icon">
+                <Smartphone size={16} />
+              </span>
+              Install Lumina
+            </h2>
+            <div className="update-copy">
+              <strong>{isInstalledPwa ? 'Installed on this device' : 'Use Lumina like an app'}</strong>
+              <span>
+                {isInstalledPwa
+                  ? 'Lumina is running from your Home Screen in standalone mode.'
+                  : isAppleMobile
+                    ? 'In Safari, tap Share and choose Add to Home Screen.'
+                    : installPrompt
+                      ? 'Install the private player for a standalone, full-screen experience.'
+                      : 'Open your browser menu and choose Install app or Add to Home Screen.'}
+              </span>
+            </div>
+          </div>
+          {!isInstalledPwa && (
+            <div className="developer-actions">
+              {installPrompt ? (
+                <button className="developer-link" onClick={installPwa} type="button">
+                  Install app
+                  <Smartphone size={14} />
+                </button>
+              ) : isAppleMobile ? (
+                <div className="pwa-ios-hint">
+                  <Share2 size={14} />
+                  Share → Add to Home Screen
+                </div>
+              ) : null}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="settings-card developer-card">
         <div>
