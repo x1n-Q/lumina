@@ -6,6 +6,7 @@ import {
   Mic2,
   Moon,
   Pause,
+  PictureInPicture2,
   Play,
   Repeat2,
   Shuffle,
@@ -55,7 +56,9 @@ export default function MusicPlayer({
   shuffleEnabled = false,
   onToggleShuffle,
   repeatMode = 'off',
-  onCycleRepeat
+  onCycleRepeat,
+  canOpenMiniPlayer = false,
+  onOpenMiniPlayer
 }) {
   const [showSleepMenu, setShowSleepMenu] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
@@ -146,6 +149,16 @@ export default function MusicPlayer({
       </div>
 
       <div className="player-tools">
+        {canOpenMiniPlayer && (
+          <button
+            className="tool-button mini-player-tool"
+            onClick={onOpenMiniPlayer}
+            title="Open floating mini player"
+            aria-label="Open floating always-on-top mini player"
+          >
+            <PictureInPicture2 size={17} />
+          </button>
+        )}
         <div className="queue-tool-wrap">
           <button
             className={`tool-button queue-tool ${showQueue ? 'active' : ''}`}

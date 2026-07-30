@@ -2161,7 +2161,7 @@ input[type='range'] {
     display: flex;
   }
 
-  .player-tools > :not(.queue-tool-wrap) {
+  .player-tools > :not(.queue-tool-wrap):not(.mini-player-tool) {
     display: none;
   }
 

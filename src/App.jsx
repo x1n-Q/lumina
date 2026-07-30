@@ -495,13 +495,13 @@ export default function App() {
     tracks
   ]);
 
-  const handlePrevTrack = () => {
+  const handlePrevTrack = useCallback(() => {
     const contextQueue = playingQueue.length > 0 ? playingQueue : tracks;
     if (contextQueue.length === 0) return;
     const previousIndex = (playingQueueIndex - 1 + contextQueue.length) % contextQueue.length;
     setPlayingQueueIndex(previousIndex);
     beginTrack(contextQueue[previousIndex]);
-  };
+  }, [beginTrack, playingQueue, playingQueueIndex, tracks]);
 
   const handleQueueTrack = useCallback((track) => {
     if (!playingTrack) {
@@ -562,10 +562,10 @@ export default function App() {
     ));
   };
 
-  const handleTogglePlay = () => {
+  const handleTogglePlay = useCallback(() => {
     setPlaybackError('');
     setIsPlaying((currentlyPlaying) => !currentlyPlaying);
-  };
+  }, []);
 
   const handleSeek = (time) => {
     if (!Number.isFinite(time)) return;
@@ -676,6 +676,32 @@ export default function App() {
     const nextSpeed = Number(speed);
     audioRef.current.playbackRate = Number.isFinite(nextSpeed) ? nextSpeed : 1;
   }, [speed]);
+
+  useEffect(() => {
+    const desktop = window.luminaDesktop;
+    if (!desktop?.sendPlaybackState) return;
+    desktop.sendPlaybackState({
+      track: playingTrack && {
+        id: playingTrack.id,
+        title: playingTrack.title,
+        artist: playingTrack.artist,
+        cover: playingTrack.cover
+      },
+      isPlaying,
+      currentTime,
+      duration
+    });
+  }, [currentTime, duration, isPlaying, playingTrack]);
+
+  useEffect(() => {
+    const desktop = window.luminaDesktop;
+    if (!desktop?.onMiniPlayerCommand) return undefined;
+    return desktop.onMiniPlayerCommand((command) => {
+      if (command === 'previous') handlePrevTrack();
+      if (command === 'toggle') handleTogglePlay();
+      if (command === 'next') handleNextTrack();
+    });
+  }, [handleNextTrack, handlePrevTrack, handleTogglePlay]);
 
   useEffect(() => {
     if (!playingTrack) return;
@@ -809,6 +835,8 @@ export default function App() {
         onToggleShuffle={() => setShuffleEnabled((enabled) => !enabled)}
         repeatMode={repeatMode}
         onCycleRepeat={handleCycleRepeat}
+        canOpenMiniPlayer={Boolean(window.luminaDesktop?.openMiniPlayer)}
+        onOpenMiniPlayer={() => window.luminaDesktop?.openMiniPlayer()}
       />
 
       <EqualizerModal

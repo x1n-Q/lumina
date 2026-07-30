@@ -2,6 +2,14 @@
 
 All notable Lumina changes are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Detachable frameless mini player with previous, play/pause, and next controls
+- Always-on-top desktop mode that remains accessible while Lumina is minimized
+- Draggable mini-player positioning, live track progress, and a shortcut back to the main window
+
 ## [1.2.0] - 2026-07-30
 
 ### Added

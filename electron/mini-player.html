@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: http: https:; style-src 'self'; script-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lumina Mini Player</title>
+    <link rel="stylesheet" href="./mini-player.css" />
+  </head>
+  <body>
+    <main class="mini-shell" aria-label="Lumina floating mini player">
+      <div class="drag-strip" title="Drag to move">
+        <span class="live-dot"></span>
+        <span>Lumina</span>
+      </div>
+
+      <img id="cover" class="cover" alt="" />
+
+      <div class="track-copy">
+        <strong id="title">Nothing playing</strong>
+        <span id="artist">Open Lumina and choose a song</span>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progress" class="progress-value"></div>
+        </div>
+      </div>
+
+      <div class="transport" aria-label="Playback controls">
+        <button data-command="previous" title="Previous song" aria-label="Previous song">‹</button>
+        <button
+          id="play"
+          class="play-button"
+          data-command="toggle"
+          title="Play"
+          aria-label="Play"
+        >▶</button>
+        <button data-command="next" title="Next song" aria-label="Next song">›</button>
+      </div>
+
+      <div class="window-actions">
+        <button data-command="show-main" title="Open Lumina" aria-label="Open Lumina">↗</button>
+        <button data-command="hide" title="Hide mini player" aria-label="Hide mini player">×</button>
+      </div>
+    </main>
+
+    <script src="./mini-player.js"></script>
+  </body>
+</html>
