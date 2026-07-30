@@ -334,27 +334,30 @@ export default function App() {
   }, [refreshEngineHealth]);
 
   useEffect(() => {
-    if (!['home', 'explore'].includes(activeTab)) return undefined;
-
-    const genre = MUSIC_GENRES.find((item) => item.id === activeGenre) || MUSIC_GENRES[0];
-    const typedQuery = searchQuery.trim();
-    const isDiscover = activeTab === 'home';
-    const query = isDiscover
-      ? discoveryQuery
-      : typedQuery || genre?.query || 'music';
+    if (activeTab !== 'home') return undefined;
     const timer = window.setTimeout(
-      () => loadMusicCategory(query, isDiscover ? discoveryKey : ''),
-      !isDiscover && typedQuery ? 400 : 0
+      () => loadMusicCategory(discoveryQuery, discoveryKey),
+      0
     );
     return () => window.clearTimeout(timer);
   }, [
-    activeGenre,
     activeTab,
     discoveryKey,
     discoveryQuery,
-    loadMusicCategory,
-    searchQuery
+    loadMusicCategory
   ]);
+
+  useEffect(() => {
+    if (activeTab !== 'explore') return undefined;
+    const genre = MUSIC_GENRES.find((item) => item.id === activeGenre) || MUSIC_GENRES[0];
+    const typedQuery = searchQuery.trim();
+    const query = typedQuery || genre?.query || 'music';
+    const timer = window.setTimeout(
+      () => loadMusicCategory(query),
+      typedQuery ? 400 : 0
+    );
+    return () => window.clearTimeout(timer);
+  }, [activeGenre, activeTab, loadMusicCategory, searchQuery]);
 
   const handleSearchQueryChange = (value) => {
     setSearchQuery(value);

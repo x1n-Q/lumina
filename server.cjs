@@ -24,6 +24,7 @@ app.use(cors());
 app.use(express.json({ limit: '64kb' }));
 
 const audioCache = new Map();
+const audioResolutionsInFlight = new Map();
 const downloadedTracks = new Map();
 const downloadsInFlight = new Map();
 let audioServer = null;
@@ -34,6 +35,7 @@ const engineMetrics = {
   startedAt: Date.now(),
   searches: 0,
   streamRequests: 0,
+  audioResolutions: 0,
   activeStreams: 0,
   lastActivityAt: null,
   lastErrorAt: null,
@@ -326,29 +328,46 @@ async function resolveAudio(videoId, forceRefresh = false) {
     return cached;
   }
 
-  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const output = await runYtDlp([
-    '--format', 'bestaudio[ext=m4a]/bestaudio',
-    '--dump-single-json',
-    '--no-playlist',
-    '--no-warnings',
-    watchUrl
-  ]);
-  const info = JSON.parse(output);
-
-  if (!info.url) {
-    throw new Error('yt-dlp did not return a playable audio URL');
+  const pendingResolution = audioResolutionsInFlight.get(videoId);
+  if (pendingResolution) {
+    return pendingResolution;
   }
 
-  const resolved = {
-    url: info.url,
-    headers: info.http_headers || {},
-    contentType: info.mime_type || (info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'),
-    extension: info.ext || '',
-    expires: Date.now() + AUDIO_CACHE_TTL
-  };
-  audioCache.set(videoId, resolved);
-  return resolved;
+  const resolution = (async () => {
+    engineMetrics.audioResolutions += 1;
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const output = await runYtDlp([
+      '--format', 'bestaudio[ext=m4a]/bestaudio',
+      '--dump-single-json',
+      '--no-playlist',
+      '--no-warnings',
+      watchUrl
+    ]);
+    const info = JSON.parse(output);
+
+    if (!info.url) {
+      throw new Error('yt-dlp did not return a playable audio URL');
+    }
+
+    const resolved = {
+      url: info.url,
+      headers: info.http_headers || {},
+      contentType: info.mime_type || (info.ext === 'webm' ? 'audio/webm' : 'audio/mp4'),
+      extension: info.ext || '',
+      expires: Date.now() + AUDIO_CACHE_TTL
+    };
+    audioCache.set(videoId, resolved);
+    return resolved;
+  })();
+
+  audioResolutionsInFlight.set(videoId, resolution);
+  try {
+    return await resolution;
+  } finally {
+    if (audioResolutionsInFlight.get(videoId) === resolution) {
+      audioResolutionsInFlight.delete(videoId);
+    }
+  }
 }
 
 function copyProxyHeaders(proxyRes, res, fallbackContentType) {
@@ -491,6 +510,7 @@ app.get('/api/health', (_req, res) => {
       .reduce((total, track) => total + (Number(track.cachedBytes) || 0), 0),
     searches: engineMetrics.searches,
     streamRequests: engineMetrics.streamRequests,
+    audioResolutions: engineMetrics.audioResolutions,
     activeStreams: engineMetrics.activeStreams,
     lastActivityAt: engineMetrics.lastActivityAt,
     lastErrorAt: engineMetrics.lastErrorAt

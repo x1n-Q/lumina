@@ -2,6 +2,14 @@
 
 All notable Lumina changes are documented here.
 
+## [Unreleased]
+
+### Fixed
+
+- Explore searches restarting when playback updates local listening history
+- Concurrent media range requests duplicating slow audio URL resolution work
+- Search results returning to a loading state immediately after selecting a song
+
 ## [1.3.0] - 2026-07-30
 
 ### Added
