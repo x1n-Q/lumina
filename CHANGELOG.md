@@ -2,7 +2,7 @@
 
 All notable Lumina changes are documented here.
 
-## [Unreleased]
+## [1.3.1] - 2026-07-30
 
 ### Fixed
 
