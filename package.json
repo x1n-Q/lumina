@@ -21,8 +21,8 @@
     "preview": "vite preview",
     "prepare:runtime": "node scripts/prepare-yt-dlp.cjs",
     "dist:linux": "npm run build && npm run prepare:runtime -- --linux && electron-builder --linux deb AppImage --x64",
-    "dist:win": "npm run build && npm run prepare:runtime -- --win && electron-builder --win portable --x64",
-    "dist:desktop": "npm run build && npm run prepare:runtime && electron-builder --linux deb AppImage --win portable --x64"
+    "dist:win": "npm run build && npm run prepare:runtime -- --win && electron-builder --win nsis portable --x64",
+    "dist:desktop": "npm run build && npm run prepare:runtime && electron-builder --linux deb AppImage --win nsis portable --x64"
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -45,7 +45,6 @@
     "productName": "Lumina",
     "asar": true,
     "compression": "normal",
-    "artifactName": "Lumina-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },
@@ -77,6 +76,7 @@
     },
     "win": {
       "target": [
+        "nsis",
         "portable"
       ],
       "icon": "public/lumina-logo.png",
@@ -87,6 +87,20 @@
           "to": "bin/yt-dlp.exe"
         }
       ]
+    },
+    "nsis": {
+      "artifactName": "Lumina-Setup-${version}-win-${arch}.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Lumina",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "Lumina-${version}-win-${arch}-portable.${ext}"
     },
     "publish": [
       {

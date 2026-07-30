@@ -24,10 +24,12 @@ Download the appropriate artifact from
 [GitHub Releases](https://github.com/x1n-Q/lumina/releases):
 
 - Linux: `.deb` package or portable `.AppImage`
-- Windows: portable `.exe`
+- Windows: `Lumina-Setup-...exe` (recommended) or the portable `.exe`
 
 Release builds include a checksum-verified `yt-dlp` runtime. Users do not need
-to install Node.js, npm, or `yt-dlp`.
+to install Node.js, npm, or `yt-dlp`. For a normal Windows PC, download the
+file whose name starts with **Lumina-Setup**. Do not download GitHub's
+automatically generated **Source code** ZIP files; those are for developers.
 
 ## Development requirements
 
@@ -42,7 +44,8 @@ npm run build
 npm start
 ```
 
-Electron starts the local audio engine automatically on `127.0.0.1:5174`.
+Electron starts the local audio engine automatically on a private available
+port on `127.0.0.1`.
 You do not need to run `server.cjs` separately.
 
 ## Downloads and local cache
@@ -79,7 +82,7 @@ npm run electron
 # Linux .deb and AppImage
 npm run dist:linux
 
-# Windows portable .exe
+# Windows Setup installer and portable .exe
 npm run dist:win
 ```
 
@@ -88,12 +91,20 @@ verifies the official SHA-256 checksum before packaging it.
 
 ## Playback troubleshooting
 
-Confirm `yt-dlp` is current and the local engine can start:
+Release users should reinstall Lumina if Windows Security quarantines the
+bundled audio helper. If startup still fails, attach this diagnostic file to a
+bug report:
+
+```text
+%APPDATA%\Lumina\startup-error.log
+```
+
+Developers can confirm `yt-dlp` is current and the local engine can start:
 
 ```bash
 yt-dlp --version
 node server.cjs
 ```
 
-If port `5174` is already in use, stop the other process before starting
-Lumina.
+Lumina automatically chooses an available local port, so another application
+using the old default port no longer prevents startup.

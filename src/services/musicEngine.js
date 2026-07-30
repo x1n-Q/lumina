@@ -4,7 +4,10 @@
  * Every track plays its EXACT original audio - no mismatches, no 30-second limits.
  */
 
-const configuredBackendUrl = globalThis.LUMINA_CONFIG?.backendUrl
+const desktopBackendPort = new URLSearchParams(globalThis.location?.search || '')
+  .get('backendPort');
+const configuredBackendUrl = (desktopBackendPort && `http://127.0.0.1:${desktopBackendPort}`)
+  || globalThis.LUMINA_CONFIG?.backendUrl
   || globalThis.METROLIST_CONFIG?.backendUrl
   || import.meta.env.VITE_BACKEND_URL
   || 'http://127.0.0.1:5174';

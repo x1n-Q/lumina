@@ -2,6 +2,19 @@
 
 All notable Lumina changes are documented here.
 
+## Unreleased
+
+### Added
+
+- Standard Windows Setup installer with Start menu and desktop shortcuts
+- Persistent startup diagnostics with clear recovery guidance for missing bundled files
+
+### Changed
+
+- The desktop audio engine now selects an available private local port automatically
+- A second Lumina launch now focuses the existing window instead of starting a conflicting engine
+- Release documentation now clearly separates normal installer downloads from developer source archives
+
 ## [1.3.1] - 2026-07-30
 
 ### Fixed

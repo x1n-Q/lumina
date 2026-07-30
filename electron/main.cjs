@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, screen } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const { startAudioServer, stopAudioServer } = require('../server.cjs');
 
@@ -7,6 +8,7 @@ app.setName('Lumina');
 
 let mainWindow = null;
 let miniPlayerWindow = null;
+let audioEnginePort = null;
 let latestPlaybackState = {
   track: null,
   isPlaying: false,
@@ -19,7 +21,30 @@ function sendPlaybackStateToMiniPlayer() {
   miniPlayerWindow.webContents.send('playback-state:update', latestPlaybackState);
 }
 
-function createWindow() {
+function writeStartupLog(message, error) {
+  const details = [
+    `[${new Date().toISOString()}] ${message}`,
+    error?.stack || error?.message || String(error || '')
+  ].filter(Boolean).join('\n');
+
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.appendFileSync(path.join(app.getPath('userData'), 'startup-error.log'), `${details}\n\n`);
+  } catch (logError) {
+    console.error('Could not write startup diagnostics:', logError.message);
+  }
+  console.error(details);
+}
+
+function showStartupError(message, error) {
+  writeStartupLog(message, error);
+  dialog.showErrorBox(
+    'Lumina could not start',
+    `${message}\n\nLumina does not require Node.js. Restart the app, then reinstall it if the problem continues.\n\nDiagnostics were saved to:\n${path.join(app.getPath('userData'), 'startup-error.log')}`
+  );
+}
+
+function createWindow(backendPort = audioEnginePort) {
   const win = new BrowserWindow({
     width: 1240,
     height: 820,
@@ -38,11 +63,18 @@ function createWindow() {
   mainWindow = win;
 
   const isDev = process.env.NODE_ENV === 'development';
+  const query = `backendPort=${encodeURIComponent(backendPort)}`;
   if (isDev) {
-    win.loadURL('http://localhost:5173');
+    win.loadURL(`http://localhost:5173/?${query}`);
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'));
+    win.loadFile(path.join(__dirname, '../dist/index.html'), {
+      query: { backendPort: String(backendPort) }
+    });
   }
+
+  win.webContents.on('did-fail-load', (_event, code, description) => {
+    writeStartupLog(`The Lumina interface failed to load (${code}: ${description}).`);
+  });
 
   win.on('closed', () => {
     mainWindow = null;
@@ -146,30 +178,54 @@ ipcMain.on('playback-state:update', (event, state) => {
   sendPlaybackStateToMiniPlayer();
 });
 
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+}
+
 app.whenReady().then(async () => {
+  if (!hasSingleInstanceLock) return;
+
   try {
+    app.setAppUserModelId('com.x1nq.lumina');
+
     if (app.isPackaged) {
-      process.env.LUMINA_YTDLP_PATH = path.join(
+      const bundledRuntimePath = path.join(
         process.resourcesPath,
         'bin',
         process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
       );
+      if (!fs.existsSync(bundledRuntimePath)) {
+        throw new Error(
+          `The bundled audio helper is missing. Windows Security or another antivirus may have quarantined it. Reinstall Lumina and allow the file if prompted. Missing file: ${bundledRuntimePath}`
+        );
+      }
+      process.env.LUMINA_YTDLP_PATH = bundledRuntimePath;
     }
-    await startAudioServer(undefined, undefined, {
+
+    const audioServer = await startAudioServer(0, '127.0.0.1', {
       cacheDirectory: path.join(app.getPath('userData'), 'audio-cache')
     });
-    createWindow();
+    const address = audioServer.address();
+    audioEnginePort = typeof address === 'object' && address ? address.port : null;
+    if (!audioEnginePort) throw new Error('The local audio engine did not provide a usable port.');
+    createWindow(audioEnginePort);
   } catch (error) {
-    dialog.showErrorBox(
-      'Lumina could not start',
-      `The local audio engine failed to start:\n\n${error.message}`
-    );
+    showStartupError(`The local audio engine failed to start: ${error.message}`, error);
     app.quit();
     return;
   }
 
   app.on('activate', () => {
-    if (!mainWindow) createWindow();
+    if (!mainWindow) createWindow(audioEnginePort);
   });
 });
 

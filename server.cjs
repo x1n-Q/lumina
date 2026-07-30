@@ -685,9 +685,11 @@ function startAudioServer(port = DEFAULT_PORT, host = DEFAULT_HOST, options = {}
     const onListening = () => {
       server.off('error', onError);
       audioServer = server;
-      publicBaseUrl = `http://${host}:${port}`;
+      const address = server.address();
+      const listeningPort = typeof address === 'object' && address ? address.port : port;
+      publicBaseUrl = `http://${host}:${listeningPort}`;
       engineMetrics.startedAt = Date.now();
-      console.log(`✓ Lumina Audio Engine running on http://${host}:${port}`);
+      console.log(`Lumina Audio Engine running on ${publicBaseUrl}`);
       runYtDlp(['--version'], 5000)
         .then((version) => {
           engineMetrics.ytDlpVersion = version.trim();
