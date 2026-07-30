@@ -2,6 +2,16 @@
 
 All notable Lumina changes are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Floating Up Next panel with current-track context and automatic follow-up previews
+- Persistent manual playback queue with play-now, reorder, remove, and clear controls
+- Add-to-queue actions on track cards and a queue-count indicator in the player
+- Surprise Me playback based on the current search, genre, collection, or Discover mix
+- Functional shuffle and repeat-off, repeat-all, and repeat-one playback modes
+
 ## [1.1.0] - 2026-07-30
 
 ### Added

@@ -11,6 +11,7 @@ import {
   Heart,
   Headphones,
   Library,
+  ListPlus,
   Loader2,
   Play,
   Radio,
@@ -52,7 +53,10 @@ export default function HomeView({
   dataSource = 'Unknown',
   notice = '',
   dashboardTracks = [],
-  onOpenExplore
+  onOpenExplore,
+  queuedSongs = [],
+  onQueueTrack,
+  onPlayRandom
 }) {
   const isHomeDashboard = viewMode === 'home';
   const homeTracks = dashboardTracks.length > 0 ? dashboardTracks.slice(0, 4) : tracks.slice(0, 4);
@@ -122,7 +126,10 @@ export default function HomeView({
               </p>
               <div className="hero-actions">
                 {featuredTrack && (
-                  <button className="btn btn-primary" onClick={() => onSelectTrack(featuredTrack)}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => onSelectTrack(featuredTrack, homeTracks)}
+                  >
                     <Play size={15} fill="currentColor" />
                     {currentTrack ? 'Resume listening' : 'Start listening'}
                   </button>
@@ -157,7 +164,7 @@ export default function HomeView({
                     </div>
                     <button
                       className="hero-play"
-                      onClick={() => onSelectTrack(featuredTrack)}
+                      onClick={() => onSelectTrack(featuredTrack, homeTracks)}
                       title={`Play ${featuredTrack.title}`}
                     >
                       {currentTrack?.id === featuredTrack.id && isPlaying ? (
@@ -319,9 +326,21 @@ export default function HomeView({
               </p>
             </div>
           </div>
-          <span className="track-count">
-            {displayTracks.length} {displayTracks.length === 1 ? 'track' : 'tracks'}
-          </span>
+          <div className="section-actions">
+            {displayTracks.length > 0 && (
+              <button
+                className="surprise-button"
+                onClick={() => onPlayRandom(displayTracks)}
+                title="Play a random song from these results"
+              >
+                <Sparkles size={13} />
+                Surprise me
+              </button>
+            )}
+            <span className="track-count">
+              {displayTracks.length} {displayTracks.length === 1 ? 'track' : 'tracks'}
+            </span>
+          </div>
         </div>
 
         {isLoading ? (
@@ -340,6 +359,7 @@ export default function HomeView({
               const isSelected = currentTrack?.id === track.id;
               const isLiked = likedSongs.includes(track.id);
               const isDownloaded = downloadedSongs.includes(track.id);
+              const isQueued = queuedSongs.includes(track.id);
               const downloadState = downloadStates[track.id];
               const canDownload = Boolean(track.videoId) && !track.isPreview;
 
@@ -347,11 +367,14 @@ export default function HomeView({
                 <article
                   key={track.id}
                   className={`track-card ${isSelected ? 'selected' : ''}`}
-                  onClick={() => onSelectTrack(track)}
+                  onClick={() => onSelectTrack(track, displayTracks)}
                   onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
+                    if (
+                      event.currentTarget === event.target
+                      && (event.key === 'Enter' || event.key === ' ')
+                    ) {
                       event.preventDefault();
-                      onSelectTrack(track);
+                      onSelectTrack(track, displayTracks);
                     }
                   }}
                   role="button"
@@ -371,6 +394,17 @@ export default function HomeView({
                         aria-label={isLiked ? 'Remove from favorites' : 'Add to favorites'}
                       >
                         <Heart size={15} fill={isLiked ? 'currentColor' : 'none'} />
+                      </button>
+                      <button
+                        className={`queue-button ${isQueued ? 'queued' : ''}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onQueueTrack(track);
+                        }}
+                        title={isQueued ? 'Move to the end of Up Next' : 'Add to Up Next'}
+                        aria-label={isQueued ? 'Move to the end of Up Next' : 'Add to Up Next'}
+                      >
+                        {isQueued ? <Check size={15} /> : <ListPlus size={15} />}
                       </button>
                       {canDownload && (
                         <button
@@ -397,7 +431,7 @@ export default function HomeView({
                       className="track-play"
                       onClick={(event) => {
                         event.stopPropagation();
-                        onSelectTrack(track);
+                        onSelectTrack(track, displayTracks);
                       }}
                       title={`Play ${track.title}`}
                     >
