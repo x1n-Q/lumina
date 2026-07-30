@@ -252,7 +252,6 @@ h6 {
   height: 42px;
   flex: 0 0 42px;
   place-items: center;
-  filter: drop-shadow(0 9px 16px rgba(87, 58, 220, 0.28));
 }
 
 .brand-logo {

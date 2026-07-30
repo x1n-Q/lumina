@@ -12,16 +12,13 @@ export default function LuminaLogo({ className = '' }) {
     >
       <defs>
         <linearGradient id="lumina-mark-gradient" x1="10" y1="6" x2="55" y2="58">
-          <stop stopColor="#D8D1FF" />
-          <stop offset="0.38" stopColor="#9A86FF" />
+          <stop stopColor="#AA98FF" />
+          <stop offset="0.38" stopColor="#846BFA" />
           <stop offset="1" stopColor="#6547E8" />
         </linearGradient>
-        <filter id="lumina-mark-shadow" x="-25%" y="-20%" width="150%" height="160%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#321A99" floodOpacity="0.38" />
-        </filter>
       </defs>
 
-      <rect x="4" y="4" width="56" height="56" rx="17" fill="url(#lumina-mark-gradient)" filter="url(#lumina-mark-shadow)" />
+      <rect x="4" y="4" width="56" height="56" rx="17" fill="url(#lumina-mark-gradient)" />
       <path
         d="M18 18V41C18 44.866 21.134 48 25 48H47"
         stroke="white"

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lumina-pwa-v3';
+const CACHE_NAME = 'lumina-pwa-v4';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
