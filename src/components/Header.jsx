@@ -28,6 +28,7 @@ export default function Header({
 }) {
   const searchRef = useRef(null);
   const [eyebrow, title] = TAB_TITLES[activeTab] || TAB_TITLES.home;
+  const isWebPreview = engineHealth?.mode === 'web-preview';
 
   useEffect(() => {
     const handleShortcut = (event) => {
@@ -55,7 +56,7 @@ export default function Header({
           type="search"
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search songs, artists, or YouTube"
+          placeholder={isWebPreview ? 'Search songs or artists' : 'Search songs, artists, or YouTube'}
           aria-label="Search music"
         />
         {searchQuery ? (
@@ -74,7 +75,9 @@ export default function Header({
       <div className="topbar-actions">
         <div className={`live-pill ${engineHealth?.ok ? '' : engineHealth?.status || 'checking'}`}>
           <RadioTower size={13} />
-          {engineHealth?.ok
+          {isWebPreview
+            ? 'Preview mode'
+            : engineHealth?.ok
             ? engineHealth.activeStreams > 0
               ? 'Streaming now'
               : 'Engine ready'

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, screen, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { startAudioServer, stopAudioServer } = require('../server.cjs');
@@ -176,6 +176,17 @@ ipcMain.on('playback-state:update', (event, state) => {
     duration: Math.max(0, Number(state.duration) || 0)
   };
   sendPlaybackStateToMiniPlayer();
+});
+
+ipcMain.on('external:open', (event, target) => {
+  if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return;
+  try {
+    const url = new URL(String(target));
+    if (url.protocol !== 'https:' || url.hostname !== 'danieldepaor.com') return;
+    shell.openExternal(url.toString());
+  } catch {
+    // Ignore malformed or unapproved external links.
+  }
 });
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();

@@ -2,6 +2,25 @@
 
 All notable Lumina changes are documented here.
 
+## Unreleased
+
+### Added
+
+- Responsive mobile web layout with bottom navigation and a compact touch-friendly player
+- Self-hosted Vercel configuration with a single-account login and signed HTTP-only sessions
+- Developer attribution for x1n-Q with a direct danieldepaor.com portfolio action
+- Installable mobile web metadata and a one-click self-deployment guide
+
+### Fixed
+
+- Track-card actions and the Now Playing badge overlapping on narrower artwork
+- Empty searches incorrectly reporting that the audio engine was unavailable
+- Playback Retry actions being pushed outside the visible player status area
+
+### Changed
+
+- Self-hosted web deployments use playable preview tracks by default, while desktop keeps full local-engine playback
+
 ## [1.4.2] - 2026-07-30
 
 ### Added

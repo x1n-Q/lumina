@@ -1,5 +1,14 @@
 import React from 'react';
-import { Check, Moon, RadioTower, ShieldCheck, X } from 'lucide-react';
+import {
+  Check,
+  Code2,
+  ExternalLink,
+  LogOut,
+  Moon,
+  RadioTower,
+  ShieldCheck,
+  X
+} from 'lucide-react';
 
 function formatUptime(seconds) {
   const totalMinutes = Math.floor((Number(seconds) || 0) / 60);
@@ -10,8 +19,30 @@ function formatUptime(seconds) {
   return `${hours}h ${minutes}m uptime`;
 }
 
-export default function SettingsView({ oledMode, setOledMode, engineHealth }) {
-  const engineFeatures = [
+export default function SettingsView({ oledMode, setOledMode, engineHealth, onLogout }) {
+  const isWebPreview = engineHealth?.mode === 'web-preview';
+  const engineFeatures = isWebPreview ? [
+    {
+      label: 'Mobile web catalog',
+      value: 'Preview mode',
+      ok: true
+    },
+    {
+      label: 'Private desktop engine',
+      value: 'Desktop only',
+      ok: true
+    },
+    {
+      label: 'Local favorites',
+      value: 'On this device',
+      ok: true
+    },
+    {
+      label: 'Account access',
+      value: 'Protected',
+      ok: true
+    }
+  ] : [
     {
       label: 'Local audio proxy',
       value: engineHealth?.ok ? 'Connected' : 'Unavailable',
@@ -35,6 +66,15 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth }) {
       ok: Boolean(engineHealth?.ok)
     }
   ];
+
+  const openPortfolio = () => {
+    const url = 'https://danieldepaor.com';
+    if (window.luminaDesktop?.openExternal) {
+      window.luminaDesktop.openExternal(url);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <div className="settings-page">
@@ -93,11 +133,17 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth }) {
             ))}
           </div>
           <div className="engine-summary">
-            {formatUptime(engineHealth?.uptimeSeconds)}
-            <span>·</span>
-            {engineHealth?.searches || 0} searches
-            <span>·</span>
-            {engineHealth?.streamRequests || 0} stream requests
+            {isWebPreview ? (
+              'Playable song previews for self-hosted mobile access'
+            ) : (
+              <>
+                {formatUptime(engineHealth?.uptimeSeconds)}
+                <span>·</span>
+                {engineHealth?.searches || 0} searches
+                <span>·</span>
+                {engineHealth?.streamRequests || 0} stream requests
+              </>
+            )}
           </div>
         </section>
       </div>
@@ -110,8 +156,36 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth }) {
           Private by design
         </h2>
         <div className="setting-description" style={{ maxWidth: 620, marginTop: 14 }}>
-          Audio is resolved by the local Lumina engine on your computer. The app
-          does not require an account or send your library to a Lumina server.
+          {isWebPreview
+            ? 'The mobile web player keeps favorites and history in this browser. Its single-user login is verified by your own Vercel deployment.'
+            : 'Audio is resolved by the local Lumina engine on your computer. The desktop app does not require an account or send your library to a Lumina server.'}
+        </div>
+      </section>
+
+      <section className="settings-card developer-card">
+        <div>
+          <h2 className="settings-card-title">
+            <span className="settings-card-icon">
+              <Code2 size={16} />
+            </span>
+            Developer
+          </h2>
+          <div className="developer-copy">
+            <strong>x1n-Q</strong>
+            <span>Creator and developer of Lumina</span>
+          </div>
+        </div>
+        <div className="developer-actions">
+          <button className="developer-link" onClick={openPortfolio} type="button">
+            Visit danieldepaor.com
+            <ExternalLink size={14} />
+          </button>
+          {onLogout && (
+            <button className="developer-link secondary" onClick={onLogout} type="button">
+              Sign out
+              <LogOut size={14} />
+            </button>
+          )}
         </div>
       </section>
     </div>

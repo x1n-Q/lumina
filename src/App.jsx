@@ -113,7 +113,7 @@ function personalizeTrackOrder(tracks, discoveryKey) {
   ));
 }
 
-export default function App() {
+export default function App({ onLogout = null }) {
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const initialDiscoverySeed = useMemo(
@@ -762,7 +762,12 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app-container" data-accent={accent} data-theme={oledMode ? 'oled' : 'dark'}>
+    <div
+      className="app-container"
+      data-accent={accent}
+      data-theme={oledMode ? 'oled' : 'dark'}
+      data-platform={window.luminaDesktop ? 'desktop' : 'web'}
+    >
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -820,6 +825,7 @@ export default function App() {
               oledMode={oledMode}
               setOledMode={setOledMode}
               engineHealth={engineHealth}
+              onLogout={onLogout}
             />
           )}
         </main>

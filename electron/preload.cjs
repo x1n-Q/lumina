@@ -9,6 +9,7 @@ function subscribe(channel, callback) {
 
 contextBridge.exposeInMainWorld('luminaDesktop', {
   openMiniPlayer: () => ipcRenderer.send('mini-player:open'),
+  openExternal: (url) => ipcRenderer.send('external:open', url),
   hideMiniPlayer: () => ipcRenderer.send('mini-player:hide'),
   showMainWindow: () => ipcRenderer.send('main-window:show'),
   sendMiniPlayerCommand: (command) => ipcRenderer.send('mini-player:command', command),

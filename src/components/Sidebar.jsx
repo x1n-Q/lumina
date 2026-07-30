@@ -30,14 +30,19 @@ export default function Sidebar({
   downloadCount
 }) {
   const engineStatus = engineHealth?.status || 'checking';
-  const statusLabel = engineHealth?.ok
+  const isWebPreview = engineHealth?.mode === 'web-preview';
+  const statusLabel = isWebPreview
+    ? 'PREVIEW'
+    : engineHealth?.ok
     ? 'ONLINE'
     : engineStatus === 'checking' || engineStatus === 'starting'
       ? 'STARTING'
       : 'OFFLINE';
   const activeStreams = engineHealth?.activeStreams || 0;
   const cachedTracks = engineHealth?.cacheEntries || 0;
-  const engineDetail = !engineHealth?.ok
+  const engineDetail = isWebPreview
+    ? 'Playable song previews'
+    : !engineHealth?.ok
     ? 'Connecting to audio service'
     : activeStreams > 0
       ? `${activeStreams} ${activeStreams === 1 ? 'track' : 'tracks'} playing`
@@ -59,7 +64,7 @@ export default function Sidebar({
         <div className="brand-copy">
           <div className="brand-name-row">
             <h1 className="brand-name">Lumina</h1>
-            <span className="brand-badge">PC</span>
+            <span className="brand-badge">{window.luminaDesktop ? 'PC' : 'WEB'}</span>
           </div>
         </div>
       </div>
@@ -69,7 +74,7 @@ export default function Sidebar({
         {MENU_ITEMS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            className={`nav-item ${activeTab === id ? 'active' : ''}`}
+            className={`nav-item nav-item-${id} ${activeTab === id ? 'active' : ''}`}
             onClick={() => setActiveTab(id)}
             title={label}
           >
@@ -82,12 +87,12 @@ export default function Sidebar({
 
       <div className="nav-group">
         <span className="nav-label">Sound</span>
-        <button className="nav-item" onClick={onOpenEqualizer} title="Equalizer">
+        <button className="nav-item nav-item-equalizer" onClick={onOpenEqualizer} title="Equalizer">
           <SlidersHorizontal size={17} />
           <span>Equalizer</span>
         </button>
         <button
-          className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+          className={`nav-item nav-item-settings ${activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => setActiveTab('settings')}
           title="Preferences"
         >

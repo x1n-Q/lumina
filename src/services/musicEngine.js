@@ -6,12 +6,12 @@
 
 const desktopBackendPort = new URLSearchParams(globalThis.location?.search || '')
   .get('backendPort');
-const configuredBackendUrl = (desktopBackendPort && `http://127.0.0.1:${desktopBackendPort}`)
+const explicitBackendUrl = (desktopBackendPort && `http://127.0.0.1:${desktopBackendPort}`)
   || globalThis.LUMINA_CONFIG?.backendUrl
   || globalThis.METROLIST_CONFIG?.backendUrl
-  || import.meta.env.VITE_BACKEND_URL
-  || 'http://127.0.0.1:5174';
-const BACKEND_URL = configuredBackendUrl.replace(/\/$/, '');
+  || import.meta.env.VITE_BACKEND_URL;
+export const IS_WEB_PREVIEW_MODE = !globalThis.luminaDesktop && !explicitBackendUrl;
+const BACKEND_URL = (explicitBackendUrl || 'http://127.0.0.1:5174').replace(/\/$/, '');
 const MAX_TRACK_DURATION_SECONDS = 20 * 60;
 const COMPILATION_TITLE_PATTERN = /\b(full album|complete album|greatest hits|best songs|all songs|non[- ]?stop|playlist|music compilation|hours? of|hour mix)\b/i;
 
@@ -25,6 +25,22 @@ function isPlayableSong(track) {
 }
 
 export async function getEngineHealth() {
+  if (IS_WEB_PREVIEW_MODE) {
+    return {
+      ok: true,
+      status: 'preview',
+      mode: 'web-preview',
+      uptimeSeconds: 0,
+      ytDlpVersion: null,
+      cacheEntries: 0,
+      savedTracks: 0,
+      savedBytes: 0,
+      searches: 0,
+      streamRequests: 0,
+      activeStreams: 0
+    };
+  }
+
   const response = await fetch(`${BACKEND_URL}/api/health`, {
     signal: AbortSignal.timeout(3000)
   });
@@ -35,6 +51,7 @@ export async function getEngineHealth() {
 }
 
 export async function getDownloadedTracks() {
+  if (IS_WEB_PREVIEW_MODE) return [];
   const response = await fetch(`${BACKEND_URL}/api/downloads`);
   if (!response.ok) {
     throw new Error(`Could not load downloads (${response.status})`);
@@ -52,6 +69,9 @@ function getTrackVideoId(track) {
 }
 
 export async function downloadTrack(track) {
+  if (IS_WEB_PREVIEW_MODE) {
+    throw new Error('Offline downloads are available in the Lumina desktop app.');
+  }
   const videoId = getTrackVideoId(track);
   if (!videoId) {
     throw new Error('Only full YouTube tracks can be downloaded');
@@ -77,6 +97,9 @@ export async function downloadTrack(track) {
 }
 
 export async function removeDownloadedTrack(track) {
+  if (IS_WEB_PREVIEW_MODE) {
+    throw new Error('Offline downloads are available in the Lumina desktop app.');
+  }
   const videoId = getTrackVideoId(track);
   if (!videoId) throw new Error('Downloaded track ID is missing');
 
@@ -89,56 +112,70 @@ export async function removeDownloadedTrack(track) {
   }
 }
 
+async function searchPreviewMusic(query, limit, message) {
+  try {
+    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=${limit}`;
+    const itunesRes = await fetch(itunesUrl);
+    if (!itunesRes.ok) throw new Error('Preview catalog unavailable');
+    const itunesData = await itunesRes.json();
+    const tracks = (itunesData.results || []).map((item) => ({
+      id: `itunes-${item.trackId}`,
+      title: item.trackName,
+      artist: item.artistName,
+      album: item.collectionName || 'Single',
+      duration: Math.floor(item.trackTimeMillis / 1000),
+      cover: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : '',
+      streamUrl: item.previewUrl,
+      genre: item.primaryGenreName || 'Music',
+      releaseDate: item.releaseDate ? item.releaseDate.split('T')[0] : '',
+      isPreview: true
+    })).filter(isPlayableSong);
+    return {
+      tracks,
+      source: 'iTunes previews',
+      degraded: true,
+      message
+    };
+  } catch (error) {
+    return {
+      tracks: [],
+      source: 'Unavailable',
+      degraded: true,
+      message: error.message || 'Music search is currently unavailable.'
+    };
+  }
+}
+
 export async function searchLiveMusic(query = 'spice and wolf ost', limit = 12) {
+  if (IS_WEB_PREVIEW_MODE) {
+    return searchPreviewMusic(
+      query,
+      limit,
+      'Mobile web mode plays song previews. Install Lumina desktop for full audio and downloads.'
+    );
+  }
+
   try {
     const url = `${BACKEND_URL}/api/search?q=${encodeURIComponent(query)}&limit=${limit}`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error('Backend search failed');
+    if (!res.ok) throw new Error(`Audio engine search returned ${res.status}`);
     const data = await res.json();
     const playableTracks = Array.isArray(data) ? data.filter(isPlayableSong) : [];
-    if (playableTracks.length > 0) {
-      return {
-        tracks: playableTracks,
-        source: 'YouTube',
-        degraded: false,
-        message: ''
-      };
-    }
-    throw new Error('No results');
-  } catch (err) {
-    console.warn('Backend unavailable, falling back to iTunes metadata', err);
-    // Fallback to iTunes for metadata only
-    try {
-      const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=${limit}`;
-      const itunesRes = await fetch(itunesUrl);
-      if (!itunesRes.ok) throw new Error('iTunes error');
-      const itunesData = await itunesRes.json();
-      const tracks = (itunesData.results || []).map((item) => ({
-          id: `itunes-${item.trackId}`,
-          title: item.trackName,
-          artist: item.artistName,
-          album: item.collectionName || 'Single',
-          duration: Math.floor(item.trackTimeMillis / 1000),
-          cover: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : '',
-          streamUrl: item.previewUrl,
-          genre: item.primaryGenreName || 'Music',
-          releaseDate: item.releaseDate ? item.releaseDate.split('T')[0] : '',
-          isPreview: true
-        })).filter(isPlayableSong);
-      return {
-        tracks,
-        source: 'iTunes previews',
-        degraded: true,
-        message: 'The local audio engine is unavailable, so preview tracks are shown.'
-      };
-    } catch (fallbackError) {
-      return {
-        tracks: [],
-        source: 'Unavailable',
-        degraded: true,
-        message: fallbackError.message || 'Music search is currently unavailable.'
-      };
-    }
+    return {
+      tracks: playableTracks,
+      source: 'YouTube',
+      degraded: false,
+      message: playableTracks.length === 0
+        ? 'No playable songs matched that search. Check the spelling or try fewer words.'
+        : ''
+    };
+  } catch (error) {
+    console.warn('Backend unavailable, falling back to playable previews', error);
+    return searchPreviewMusic(
+      query,
+      limit,
+      'The desktop audio engine could not complete this search, so playable previews are shown.'
+    );
   }
 }
 

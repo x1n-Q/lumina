@@ -7,6 +7,9 @@
 Lumina is a polished Electron music player that searches YouTube with `yt-dlp`
 and streams seekable audio through a private local proxy.
 
+Created and maintained by **x1n-Q**. Visit
+[danieldepaor.com](https://danieldepaor.com).
+
 ## Features
 
 - Full-length YouTube audio with seeking
@@ -30,6 +33,32 @@ Release builds include a checksum-verified `yt-dlp` runtime. Users do not need
 to install Node.js, npm, or `yt-dlp`. For a normal Windows PC, download the
 file whose name starts with **Lumina-Setup**. Do not download GitHub's
 automatically generated **Source code** ZIP files; those are for developers.
+
+## Self-deploy the private mobile web version
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fx1n-Q%2Flumina&env=LUMINA_USERNAME%2CLUMINA_PASSWORD%2CLUMINA_SESSION_SECRET)
+
+The repository includes a responsive mobile layout, Vercel Functions for one
+private account, and SPA routing configuration. Each person deploys their own
+copy; the project owner does not deploy or manage it for them.
+
+Before deploying, configure these three Vercel environment variables for
+Production and Preview:
+
+- `LUMINA_USERNAME`: the only accepted username
+- `LUMINA_PASSWORD`: a long, unique password
+- `LUMINA_SESSION_SECRET`: at least 32 random characters
+
+Generate a strong session secret locally:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+After adding or changing environment variables, redeploy the project. The web
+version uses playable song previews by default because the full `yt-dlp` engine
+runs privately inside the desktop app. Advanced deployers may provide a
+compatible HTTPS backend through `VITE_BACKEND_URL`.
 
 ## Development requirements
 
