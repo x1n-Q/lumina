@@ -51,7 +51,7 @@ Discord bot with permission to join that server.
 
 ## Self-deploy the private mobile web version
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fx1n-Q%2Flumina&env=LUMINA_USERNAME%2CLUMINA_PASSWORD%2CLUMINA_SESSION_SECRET)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fx1n-Q%2Flumina&env=LUMINA_USERNAME%2CLUMINA_PASSWORD%2CLUMINA_SESSION_SECRET%2CYOUTUBE_API_KEY)
 
 The repository includes a responsive mobile layout, Vercel Functions for one
 configured account, and SPA routing configuration. That account can be used
@@ -63,12 +63,13 @@ Successful logins persist for one year and renew whenever Lumina opens, so
 returning users normally sign in only once. Signing out, clearing browser data,
 or changing `LUMINA_SESSION_SECRET` invalidates that browser's session.
 
-Before deploying, configure these three Vercel environment variables for
+Before deploying, configure these Vercel environment variables for
 Production and Preview:
 
 - `LUMINA_USERNAME`: the shared account username
 - `LUMINA_PASSWORD`: the shared account password
 - `LUMINA_SESSION_SECRET`: at least 32 random characters
+- `YOUTUBE_API_KEY`: a server-side key with YouTube Data API v3 enabled
 
 Generate a strong session secret locally:
 
@@ -77,9 +78,11 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 After adding or changing environment variables, redeploy the project. The web
-version uses playable song previews by default because the full `yt-dlp` engine
-runs privately inside the desktop app. Advanced deployers may provide a
-compatible HTTPS backend through `VITE_BACKEND_URL`.
+version uses the official embedded YouTube player for complete songs when
+`YOUTUBE_API_KEY` is configured. The key stays in the server function and is
+not shipped to browsers. If the key is missing or unavailable, Lumina clearly
+labels its iTunes fallback as a 30-second preview. Advanced deployers may
+instead provide a compatible HTTPS audio backend through `VITE_BACKEND_URL`.
 
 ### Install on iPhone or iPad
 

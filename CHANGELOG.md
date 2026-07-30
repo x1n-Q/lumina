@@ -16,6 +16,10 @@ All notable Lumina changes are documented here.
 - Clarified that one configured web account supports many simultaneous browser and device sessions
 - Clarified that favorites and listening history remain local to each browser
 - Extended web sessions to one year with automatic renewal whenever Lumina opens
+- Rebuilt phone dashboards, collections, track rows, navigation, and playback spacing
+- Added complete-song web playback through the official embedded YouTube player
+- Added authenticated server-side YouTube search with a private Vercel API key
+- Corrected preview labels and durations so 30-second samples are never presented as full audio
 
 ## [1.6.0] - 2026-07-30
 
