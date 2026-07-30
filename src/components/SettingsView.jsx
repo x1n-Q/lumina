@@ -222,7 +222,7 @@ export default function SettingsView({ oledMode, setOledMode, engineHealth, onLo
         </h2>
         <div className="setting-description" style={{ maxWidth: 620, marginTop: 14 }}>
           {isWebPreview
-            ? 'The mobile web player keeps favorites and history in this browser. Its single-user login is verified by your own Vercel deployment.'
+            ? 'The shared deployment account supports many simultaneous users. Favorites and history remain separate in each browser.'
             : 'Audio is resolved by the local Lumina engine on your computer. The desktop app does not require an account or send your library to a Lumina server.'}
         </div>
       </section>

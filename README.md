@@ -54,14 +54,16 @@ Discord bot with permission to join that server.
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fx1n-Q%2Flumina&env=LUMINA_USERNAME%2CLUMINA_PASSWORD%2CLUMINA_SESSION_SECRET)
 
 The repository includes a responsive mobile layout, Vercel Functions for one
-private account, and SPA routing configuration. Each person deploys their own
-copy; the project owner does not deploy or manage it for them.
+configured account, and SPA routing configuration. That account can be used
+simultaneously by many browsers and devices, which is useful for a shared demo.
+Each browser keeps its own favorites and history. Deployment owners manage
+their own copy; the project owner does not manage it for them.
 
 Before deploying, configure these three Vercel environment variables for
 Production and Preview:
 
-- `LUMINA_USERNAME`: the only accepted username
-- `LUMINA_PASSWORD`: a long, unique password
+- `LUMINA_USERNAME`: the shared account username
+- `LUMINA_PASSWORD`: the shared account password
 - `LUMINA_SESSION_SECRET`: at least 32 random characters
 
 Generate a strong session secret locally:

@@ -11,6 +11,11 @@ All notable Lumina changes are documented here.
 - iPhone and iPad Home Screen metadata with safe-area-aware standalone display
 - Platform-aware installation guidance in Preferences
 
+### Changed
+
+- Clarified that one configured web account supports many simultaneous browser and device sessions
+- Clarified that favorites and listening history remain local to each browser
+
 ## [1.6.0] - 2026-07-30
 
 ### Added

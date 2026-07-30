@@ -84,12 +84,12 @@ export default function AuthGate() {
         <LuminaLogo className="auth-logo" />
         <div className="auth-kicker">
           <LockKeyhole size={13} />
-          Private listening space
+          Protected web access
         </div>
         <h1 id="auth-title">Sign in to Lumina</h1>
         <p>
-          This self-hosted web player accepts the single account configured by
-          its deployment owner.
+          Use the account configured by this deployment owner. The same account
+          can stay signed in on many devices at once.
         </p>
 
         {status === 'checking' ? (
