@@ -4,6 +4,14 @@ All notable Lumina changes are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Automatic official YouTube backup player after the local desktop engine exhausts two fresh-stream retries
+
+### Changed
+
+- Packaged desktop builds now load the interface from the private loopback server so embedded fallback playback has a valid HTTP origin
+
 ## [1.6.1] - 2026-07-30
 
 ### Added
