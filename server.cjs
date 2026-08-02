@@ -31,6 +31,7 @@ let audioServer = null;
 let publicBaseUrl = `http://${DEFAULT_HOST}:${DEFAULT_PORT}`;
 let downloadDirectory = DEFAULT_DOWNLOAD_DIRECTORY;
 let downloadIndexPath = path.join(downloadDirectory, DOWNLOAD_INDEX_FILE);
+let uiStaticDirectory = '';
 const engineMetrics = {
   startedAt: Date.now(),
   searches: 0,
@@ -681,6 +682,14 @@ app.get('/api/stream/:videoId', async (req, res) => {
 function startAudioServer(port = DEFAULT_PORT, host = DEFAULT_HOST, options = {}) {
   if (audioServer) {
     return Promise.resolve(audioServer);
+  }
+
+  if (options.uiDirectory && !uiStaticDirectory) {
+    const resolvedUiDirectory = path.resolve(options.uiDirectory);
+    if (fs.existsSync(path.join(resolvedUiDirectory, 'index.html'))) {
+      uiStaticDirectory = resolvedUiDirectory;
+      app.use(express.static(uiStaticDirectory));
+    }
   }
 
   return initializeDownloadCache(options.cacheDirectory).then(() => new Promise((resolve, reject) => {

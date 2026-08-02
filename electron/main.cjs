@@ -164,9 +164,9 @@ function createWindow(backendPort = audioEnginePort) {
   if (isDev) {
     win.loadURL(`http://localhost:5173/?${query}`);
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'), {
-      query: { backendPort: String(backendPort) }
-    });
+    // Use the loopback web origin served by the audio engine so the official
+    // YouTube fallback receives a valid HTTP referrer in packaged builds.
+    win.loadURL(`http://127.0.0.1:${backendPort}/?${query}`);
   }
 
   win.webContents.on('did-fail-load', (_event, code, description) => {
@@ -374,7 +374,8 @@ app.whenReady().then(async () => {
     }
 
     const audioServer = await startAudioServer(0, '127.0.0.1', {
-      cacheDirectory: path.join(app.getPath('userData'), 'audio-cache')
+      cacheDirectory: path.join(app.getPath('userData'), 'audio-cache'),
+      uiDirectory: path.join(__dirname, '../dist')
     });
     const address = audioServer.address();
     audioEnginePort = typeof address === 'object' && address ? address.port : null;
