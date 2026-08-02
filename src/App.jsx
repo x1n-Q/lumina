@@ -25,6 +25,7 @@ import { useAudioEffects } from './hooks/useAudioEffects';
 const DEFAULT_GENRE_ID = MUSIC_GENRES[0]?.id || '';
 const MAX_RECENT_TRACKS = 24;
 const MAX_QUEUED_TRACKS = 100;
+const MAX_LOCAL_ENGINE_RETRIES = 2;
 const DISCOVERY_QUERIES = [
   'indie hidden gems music mix',
   'dreamy alternative music discovery',
@@ -233,6 +234,7 @@ export default function App({ onLogout = null }) {
   const [lyricsData, setLyricsData] = useState([]);
   const [sleepTimer, setSleepTimer] = useState(null);
   const musicRequestRef = useRef(0);
+  const handledPlaybackFailureRef = useRef('');
 
   const audioRef = useRef(null);
   const youtubeControllerRef = useRef(null);
@@ -455,6 +457,7 @@ export default function App({ onLogout = null }) {
   const beginTrack = useCallback((track) => {
     if (!track) return;
     const playableTrack = prepareTrackForPlayback(track);
+    handledPlaybackFailureRef.current = '';
     const usesYouTubePlayer = playableTrack.playbackType === 'youtube';
     if (usesYouTubePlayer) {
       audioRef.current.pause();
@@ -617,6 +620,47 @@ export default function App({ onLogout = null }) {
     setIsPlaying((currentlyPlaying) => !currentlyPlaying);
   }, [activateAudioEffects, playingTrack?.playbackType]);
 
+  const handleLocalPlaybackFailure = useCallback((error) => {
+    if (!playingTrack || playingTrack.playbackType === 'youtube') return;
+
+    const failureKey = `${playingTrack.id}:${playbackAttempt}`;
+    if (handledPlaybackFailureRef.current === failureKey) return;
+    handledPlaybackFailureRef.current = failureKey;
+    console.error('Local audio playback failed:', error);
+    audioRef.current.pause();
+    refreshEngineHealth();
+
+    if (playingTrack.videoId && playbackAttempt < MAX_LOCAL_ENGINE_RETRIES) {
+      const retryNumber = playbackAttempt + 1;
+      setPlaybackError(
+        `Local engine failed. Retrying with a fresh stream (${retryNumber}/${MAX_LOCAL_ENGINE_RETRIES})…`
+      );
+      setIsBuffering(true);
+      setPlaybackAttempt(retryNumber);
+      setIsPlaying(true);
+      return;
+    }
+
+    if (playingTrack.videoId) {
+      setPlaybackError('Local audio was blocked. Switching to the YouTube player…');
+      setCurrentTime(0);
+      setPlaybackAttempt(0);
+      setIsBuffering(true);
+      setPlayingTrack({
+        ...playingTrack,
+        streamUrl: `youtube:${playingTrack.videoId}`,
+        playbackType: 'youtube',
+        playbackEngine: 'youtube-fallback'
+      });
+      setIsPlaying(true);
+      return;
+    }
+
+    setPlaybackError('Unable to play this track. Try another song.');
+    setIsBuffering(false);
+    setIsPlaying(false);
+  }, [playbackAttempt, playingTrack, refreshEngineHealth]);
+
   const handleRetryPlayback = useCallback(() => {
     if (!playingTrack) return;
     if (playingTrack.playbackType === 'youtube') {
@@ -631,6 +675,7 @@ export default function App({ onLogout = null }) {
     }
     if (!playingTrack.streamUrl) return;
     audioRef.current.pause();
+    handledPlaybackFailureRef.current = '';
     setPlaybackError('');
     setCurrentTime(0);
     setIsBuffering(true);
@@ -722,17 +767,19 @@ export default function App({ onLogout = null }) {
     let cancelled = false;
     activateAudioEffects().then(() => audio.play()).catch((error) => {
       if (cancelled || error?.name === 'AbortError') return;
-      console.error('Audio playback failed:', error);
-      setPlaybackError('Unable to play this track. Check the audio engine or try another song.');
-      setIsBuffering(false);
-      setIsPlaying(false);
-      refreshEngineHealth();
+      handleLocalPlaybackFailure(error);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [activateAudioEffects, isPlaying, playingTrack, refreshEngineHealth]);
+  }, [
+    activateAudioEffects,
+    handleLocalPlaybackFailure,
+    isPlaying,
+    playbackAttempt,
+    playingTrack
+  ]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -748,12 +795,7 @@ export default function App({ onLogout = null }) {
       refreshEngineHealth();
     };
     const onWaiting = () => setIsBuffering(true);
-    const onError = () => {
-      setIsBuffering(false);
-      setIsPlaying(false);
-      setPlaybackError('The audio stream could not be loaded. Try the track again.');
-      refreshEngineHealth();
-    };
+    const onError = () => handleLocalPlaybackFailure(audio.error);
 
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('loadedmetadata', onDurationChange);
@@ -787,7 +829,7 @@ export default function App({ onLogout = null }) {
       audio.removeEventListener('error', onError);
       audio.removeEventListener('ended', onEnded);
     };
-  }, [handleNextTrack, refreshEngineHealth, repeatMode]);
+  }, [handleLocalPlaybackFailure, handleNextTrack, refreshEngineHealth, repeatMode]);
 
   useEffect(() => {
     const nextVolume = Number(volume);

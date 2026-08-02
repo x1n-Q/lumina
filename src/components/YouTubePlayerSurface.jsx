@@ -37,6 +37,7 @@ export default function YouTubePlayerSurface({
   onError,
   onProgress
 }) {
+  const isFallback = track.playbackEngine === 'youtube-fallback';
   const hostRef = useRef(null);
   const playerRef = useRef(null);
   const initialVideoIdRef = useRef(track.videoId);
@@ -131,7 +132,10 @@ export default function YouTubePlayerSurface({
   return (
     <section className="youtube-player-surface" aria-label="Full YouTube player">
       <div className="youtube-player-heading">
-        <span><Play size={15} fill="currentColor" /> Complete song</span>
+        <span>
+          <Play size={15} fill="currentColor" />
+          {isFallback ? 'Backup player' : 'Complete song'}
+        </span>
         <strong>{track.title}</strong>
       </div>
       <div className="youtube-player-frame" ref={hostRef} />
